@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   QrCode,
@@ -7,13 +7,14 @@ import {
   CheckCircle2,
   Copy,
   Clock,
-  ShieldCheck,
+  ShieldAlert,
   Smartphone,
-  ExternalLink,
-  ChevronRight
+  Info,
+  Server
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Invoice } from '../types';
+import { formatCurrencyIDR } from '../utils/formatters';
 
 interface MidtransModalProps {
   invoice: Invoice;
@@ -26,38 +27,54 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Keyboard accessibility: Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const virtualAccountNumber = `8277 0065 ${invoice.student_nisn.slice(-4)}`;
 
   const handleSimulateSuccess = () => {
     setIsProcessing(true);
     setTimeout(() => {
-      let methodName = 'Midtrans QRIS';
-      if (selectedMethod === 'bca_va') methodName = 'Midtrans BCA Virtual Account';
-      if (selectedMethod === 'gopay') methodName = 'Midtrans GoPay / E-Wallet';
+      let methodName = 'Midtrans QRIS (Simulasi)';
+      if (selectedMethod === 'bca_va') methodName = 'Midtrans BCA Virtual Account (Simulasi)';
+      if (selectedMethod === 'gopay') methodName = 'Midtrans GoPay (Simulasi)';
 
       payInvoiceWithMidtrans(invoice.id, methodName);
       setIsProcessing(false);
       onClose();
 
-      // Open receipt automatically
+      // Open receipt automatically with standard timestamp
       setActiveReceiptInvoice({
         ...invoice,
         status: 'paid',
         payment_method: methodName,
-        paid_at: '22 Okt 2026, 15:45 WIB'
+        paid_at: new Date().toISOString()
       });
-    }, 1200);
+    }, 1000);
   };
 
   const copyVA = () => {
     navigator.clipboard.writeText(virtualAccountNumber.replace(/\s+/g, ''));
     setCopied(true);
-    showToast('Nomor Virtual Account berhasil disalin!', 'info');
+    showToast('Nomor Virtual Account simulasi berhasil disalin!', 'info');
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="midtrans-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200"
+    >
       <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col">
         {/* Midtrans Header Bar */}
         <div className="bg-[#002855] text-white p-4 sm:px-6 flex items-center justify-between">
@@ -68,16 +85,27 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
               </span>
             </div>
             <div>
-              <p className="text-xs font-semibold text-sky-200">Payment Gateway Resmi</p>
-              <h3 className="text-sm font-bold tracking-tight">Midtrans Payment Portal</h3>
+              <p className="text-xs font-semibold text-sky-200">Payment Gateway Demo</p>
+              <h3 id="midtrans-modal-title" className="text-sm font-bold tracking-tight">
+                Midtrans Snap Portal (Simulasi)
+              </h3>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label="Tutup dialog pembayaran"
             className="p-1 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Clear Demo Disclaimer Banner as requested in code review */}
+        <div className="bg-amber-50 px-4 py-2.5 border-b border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="leading-snug">
+            <strong>Demo Simulasi Frontend:</strong> Transaksi ini hanya untuk pengujian alur antarmuka dan <em>tidak memproses uang nyata</em>.
+          </p>
         </div>
 
         {/* Invoice Summary Banner */}
@@ -87,7 +115,7 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
               Total Pembayaran
             </span>
             <p className="text-xl sm:text-2xl font-extrabold text-blue-700 font-['Outfit',sans-serif]">
-              Rp {invoice.amount.toLocaleString('id-ID')}
+              {formatCurrencyIDR(invoice.amount)}
             </p>
           </div>
           <div className="text-right">
@@ -101,8 +129,8 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
         </div>
 
         {/* Method Selector Tabs */}
-        <div className="p-4 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-          <p className="text-xs font-bold text-slate-700">Pilih Metode Pembayaran:</p>
+        <div className="p-4 sm:p-6 space-y-4 max-h-[55vh] overflow-y-auto">
+          <p className="text-xs font-bold text-slate-700">Pilih Metode Pembayaran Demo:</p>
 
           <div className="grid grid-cols-3 gap-2">
             <button
@@ -146,26 +174,25 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
           {selectedMethod === 'qris' && (
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col items-center text-center space-y-3">
               <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
-                Semua Dompet Digital & Mobile Banking
+                Simulasi Kode QRIS
               </span>
-              
-              {/* Realistic QRIS Graphic */}
+
               <div className="p-3 bg-white rounded-2xl shadow-md border border-slate-200 flex flex-col items-center">
-                <div className="w-44 h-44 bg-slate-900 rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden">
+                <div className="w-40 h-40 bg-slate-900 rounded-xl flex flex-col items-center justify-center p-3 relative overflow-hidden">
                   <div className="absolute inset-2 border-2 border-dashed border-white/40 rounded-lg flex items-center justify-center">
-                    <QrCode className="w-32 h-32 text-white" />
+                    <QrCode className="w-28 h-28 text-white" />
                   </div>
-                  <div className="absolute bg-white px-2 py-0.5 rounded text-[9px] font-extrabold text-blue-900 shadow">
-                    QRIS RESMI
+                  <div className="absolute bg-white px-2 py-0.5 rounded text-[8px] font-extrabold text-blue-900 shadow">
+                    QRIS DEMO
                   </div>
                 </div>
-                <p className="text-[11px] font-semibold text-slate-600 mt-2 font-mono">
-                  NMID: ID102026889218
+                <p className="text-[10px] font-semibold text-slate-500 mt-2 font-mono">
+                  NMID: ID102026889218 (Sandbox)
                 </p>
               </div>
 
-              <p className="text-xs text-slate-500 max-w-xs">
-                Scan kode QR di atas menggunakan aplikasi BCA Mobile, Livin, BRImo, GoPay, OVO, atau Dana.
+              <p className="text-[11px] text-slate-500 max-w-xs">
+                Peragakan alur pembayaran mobile banking / dompet digital.
               </p>
             </div>
           )}
@@ -173,7 +200,7 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
           {selectedMethod === 'bca_va' && (
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
               <span className="text-xs font-bold text-slate-700 block">
-                Nomor Virtual Account BCA:
+                Nomor Virtual Account Simulasi:
               </span>
               <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between">
                 <span className="text-base sm:text-lg font-mono font-extrabold text-blue-900 tracking-wider">
@@ -189,8 +216,7 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
               </div>
               <div className="text-[11px] text-slate-500 space-y-1">
                 <p>1. Buka m-BCA atau KlikBCA &gt; Transfer &gt; BCA Virtual Account</p>
-                <p>2. Masukkan nomor di atas & periksa nama siswa: <strong>{invoice.student_name}</strong></p>
-                <p>3. Konfirmasi pembayaran dan simpan bukti transfer.</p>
+                <p>2. Tagihan atas nama: <strong>{invoice.student_name}</strong></p>
               </div>
             </div>
           )}
@@ -199,20 +225,20 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col items-center text-center space-y-2">
               <Smartphone className="w-10 h-10 text-emerald-600 mt-1" />
               <p className="text-xs font-bold text-slate-800">
-                Hubungkan dengan Aplikasi GoPay
+                Simulasi Integrasi GoPay Deeplink
               </p>
               <p className="text-[11px] text-slate-500">
-                Setelah klik bayar, notifikasi pembayaran akan otomatis diteruskan ke aplikasi GoPay Anda.
+                Dalam implementasi riwayat nyata, aplikasi akan membuka URL pembayaran resmi dari penyedia.
               </p>
             </div>
           )}
 
-          {/* Security & Sandbox Info */}
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-50/60 border border-blue-100 text-[11px] text-blue-800">
-            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0" />
-            <span>
-              Simulasi Lingkungan Uji Midtrans Sandbox terverifikasi dengan SSL 256-bit enkripsi end-to-end.
-            </span>
+          {/* Architectural Backend Disclaimer Notice */}
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-100 border border-slate-200 text-[11px] text-slate-600">
+            <Server className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong>Catatan Arsitektur Produksi:</strong> Frontend tidak menentukan status pembayaran secara mandiri. Di backend NestJS, transaksi divalidasi ke Midtrans Server API, dan status lunas hanya dicatat setelah verifikasi webhook dengan signature SHA-512.
+            </p>
           </div>
         </div>
 
@@ -222,7 +248,7 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
             onClick={onClose}
             className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
           >
-            Batal
+            Tutup
           </button>
           <button
             onClick={handleSimulateSuccess}
@@ -232,12 +258,12 @@ export const MidtransModal: React.FC<MidtransModalProps> = ({ invoice, onClose }
             {isProcessing ? (
               <>
                 <Clock className="w-4 h-4 animate-spin" />
-                <span>Memproses Webhook Midtrans...</span>
+                <span>Menyimpan State Pembayaran Demo...</span>
               </>
             ) : (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Simulasikan Pembayaran Berhasil</span>
+                <span>Simulasikan Pembayaran Berhasil (Demo)</span>
               </>
             )}
           </button>

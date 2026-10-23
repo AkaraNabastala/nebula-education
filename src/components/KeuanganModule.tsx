@@ -11,10 +11,13 @@ import {
   FileText,
   Building,
   Zap,
-  ArrowUpRight
+  ArrowUpRight,
+  AlertTriangle
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { InvoiceStatus, Invoice } from '../types';
+import { financeService } from '../services/financeService';
+import { formatDateID, formatCurrencyIDR } from '../utils/formatters';
 
 export const KeuanganModule: React.FC = () => {
   const {
@@ -25,7 +28,8 @@ export const KeuanganModule: React.FC = () => {
     setActiveReceiptInvoice,
     addNewInvoice,
     showToast,
-    role
+    role,
+    currentUser
   } = useApp();
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -38,8 +42,15 @@ export const KeuanganModule: React.FC = () => {
   const [formTitle, setFormTitle] = useState('SPP Bulan Desember 2026');
   const [formCategory, setFormCategory] = useState<'SPP' | 'Uang Gedung' | 'Kegiatan' | 'Ujian' | 'Praktikum'>('SPP');
   const [formAmount, setFormAmount] = useState('350000');
-  const [formDueDate, setFormDueDate] = useState('10 Des 2026');
+  const [formDueDate, setFormDueDate] = useState('2026-12-10');
   const [formDescription, setFormDescription] = useState('Iuran Penyelenggaraan Pendidikan (SPP) Reguler');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Check if current user has permission to manage finance
+  const hasFinanceAccess =
+    role === 'admin' ||
+    role === 'keuangan' ||
+    Boolean(currentUser?.assignments?.some(a => a.is_active && a.jabatan === 'bendahara'));
 
   const filteredInvoices = invoices.filter(inv => {
     if (statusFilter !== 'all' && inv.status !== statusFilter) return false;
@@ -69,37 +80,51 @@ export const KeuanganModule: React.FC = () => {
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
+    const parsedAmount = Number(formAmount);
+    if (!formAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      setFormError('Nominal tagihan harus berupa angka positif lebih dari Rp 0.');
+      return;
+    }
+
+    if (!formTitle.trim()) {
+      setFormError('Nama tagihan wajib diisi.');
+      return;
+    }
+
+    if (!formDueDate) {
+      setFormError('Tanggal jatuh tempo wajib ditentukan.');
+      return;
+    }
+
     const st = students.find(s => s.id === formStudentId) || students[0];
+    if (!st) {
+      setFormError('Pilih siswa yang terdaftar.');
+      return;
+    }
+
     addNewInvoice({
       student_id: st.id,
       student_name: st.name,
       student_nisn: st.nisn,
       class_name: st.class_name,
-      title: formTitle,
-      description: formDescription,
-      amount: parseInt(formAmount) || 350000,
+      title: formTitle.trim(),
+      description: formDescription.trim(),
+      amount: parsedAmount,
       amount_paid: 0,
       due_date: formDueDate,
       status: 'upcoming',
       category: formCategory
     });
+
     setShowCreateModal(false);
+    setFormError(null);
   };
 
   const handleExportCSV = () => {
-    const headers = ['No Invoice,Nama Siswa,NISN,Kelas,Rincian,Nominal,Status,Jatuh Tempo,Metode,Tanggal Bayar'];
-    const rows = filteredInvoices.map(i =>
-      `"${i.invoice_no}","${i.student_name}","${i.student_nisn}","${i.class_name}","${i.title}",${i.amount},"${i.status}","${i.due_date}","${i.payment_method || '-'}","${i.paid_at || '-'}"`
-    );
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rekap_Keuangan_SPP_Edutera_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast('File CSV Laporan Keuangan berhasil diunduh!', 'success');
+    financeService.exportInvoicesCsv(filteredInvoices);
+    showToast('File CSV Laporan Keuangan berhasil diunduh dengan sanitasi formula!', 'success');
   };
 
   return (
@@ -112,7 +137,7 @@ export const KeuanganModule: React.FC = () => {
             <CheckCircle2 className="w-5 h-5 text-blue-200" />
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold mt-3 font-['Outfit']">
-            Rp {totalPaid.toLocaleString('id-ID')}
+            {formatCurrencyIDR(totalPaid)}
           </p>
           <p className="text-[11px] text-blue-200 mt-1">
             {invoices.filter(i => i.status === 'paid').length} transaksi terverifikasi
@@ -125,7 +150,7 @@ export const KeuanganModule: React.FC = () => {
             <AlertCircle className="w-5 h-5 text-rose-400" />
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold mt-3 font-['Outfit'] text-rose-300">
-            Rp {totalOverdue.toLocaleString('id-ID')}
+            {formatCurrencyIDR(totalOverdue)}
           </p>
           <p className="text-[11px] text-slate-400 mt-1">
             Perlu penagihan & pengingat orang tua
@@ -138,7 +163,7 @@ export const KeuanganModule: React.FC = () => {
             <Clock className="w-5 h-5 text-sky-600" />
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold mt-3 font-['Outfit'] text-slate-900">
-            Rp {totalUpcoming.toLocaleString('id-ID')}
+            {formatCurrencyIDR(totalUpcoming)}
           </p>
           <p className="text-[11px] text-slate-500 mt-1">
             Jatuh tempo tanggal 10 bulan ini
@@ -151,27 +176,37 @@ export const KeuanganModule: React.FC = () => {
         {/* Controls Bar */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-6">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 font-['Outfit']">
-              Manajemen SPP & Tagihan Sekolah
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold text-slate-900 font-['Outfit']">
+                Manajemen SPP & Tagihan Sekolah
+              </h3>
+              {hasFinanceAccess && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                  Otoritas Bendahara Aktif
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500">
-              Mendukung pembayaran online Midtrans Snap (QRIS, VA Bank) dan pembayaran tunai
+              Mendukung pembayaran online Midtrans Snap (QRIS, VA Bank) dan pembayaran tunai kasir sekolah
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              Ekspor CSV
+              Ekspor CSV Aman
             </button>
 
-            {(role === 'admin' || role === 'keuangan') && (
+            {hasFinanceAccess && (
               <button
-                onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/25 transition-all"
+                onClick={() => {
+                  setFormError(null);
+                  setShowCreateModal(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/25 transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Terbitkan Tagihan Baru
@@ -198,7 +233,7 @@ export const KeuanganModule: React.FC = () => {
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   statusFilter === st
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
@@ -247,9 +282,11 @@ export const KeuanganModule: React.FC = () => {
                         {inv.category}
                       </span>
                     </td>
-                    <td className="py-3.5 px-3 text-slate-600">{inv.due_date}</td>
-                    <td className="py-3.5 px-3 font-bold text-slate-900">
-                      Rp {inv.amount.toLocaleString('id-ID')}
+                    <td className="py-3.5 px-3 text-slate-600">
+                      {formatDateID(inv.due_date)}
+                    </td>
+                    <td className="py-3.5 px-3 font-bold text-slate-900 font-mono">
+                      {formatCurrencyIDR(inv.amount)}
                     </td>
                     <td className="py-3.5 px-3">
                       {isPaid && (
@@ -273,7 +310,7 @@ export const KeuanganModule: React.FC = () => {
                         {isPaid ? (
                           <button
                             onClick={() => setActiveReceiptInvoice(inv)}
-                            className="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold flex items-center gap-1 transition-colors"
+                            className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
                             title="Cetak Kuitansi"
                           >
                             <FileText className="w-3.5 h-3.5" />
@@ -283,16 +320,16 @@ export const KeuanganModule: React.FC = () => {
                           <>
                             <button
                               onClick={() => setActiveMidtransInvoice(inv)}
-                              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all"
+                              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all cursor-pointer"
                             >
                               <Zap className="w-3.5 h-3.5 fill-current" />
                               Midtrans Snap
                             </button>
-                            {(role === 'admin' || role === 'keuangan') && (
+                            {hasFinanceAccess && (
                               <button
                                 onClick={() => payInvoiceCash(inv.id)}
-                                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
-                                title="Catat Bayar Tunai di Kasir"
+                                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                                title="Catat Bayar Tunai di Kasir Sekolah"
                               >
                                 Kasir Tunai
                               </button>
@@ -313,9 +350,20 @@ export const KeuanganModule: React.FC = () => {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 p-6 w-full max-w-md">
-            <h3 className="text-base font-bold text-slate-900 mb-4 font-['Outfit']">
+            <h3 className="text-base font-bold text-slate-900 mb-2 font-['Outfit']">
               Terbitkan Tagihan Baru
             </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Buat tagihan SPP atau biaya sekolah lainnya untuk siswa terpilih.
+            </p>
+
+            {formError && (
+              <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{formError}</span>
+              </div>
+            )}
+
             <form onSubmit={handleCreateSubmit} className="space-y-3.5 text-xs">
               <div>
                 <label className="font-semibold text-slate-700 block mb-1">Pilih Siswa</label>
@@ -338,6 +386,7 @@ export const KeuanganModule: React.FC = () => {
                   type="text"
                   value={formTitle}
                   onChange={e => setFormTitle(e.target.value)}
+                  placeholder="Contoh: SPP Bulan Desember 2026"
                   className="w-full p-2.5 rounded-xl border border-slate-200"
                   required
                 />
@@ -362,8 +411,11 @@ export const KeuanganModule: React.FC = () => {
                   <label className="font-semibold text-slate-700 block mb-1">Nominal (IDR)</label>
                   <input
                     type="number"
+                    min="1000"
+                    step="1000"
                     value={formAmount}
                     onChange={e => setFormAmount(e.target.value)}
+                    placeholder="350000"
                     className="w-full p-2.5 rounded-xl border border-slate-200 font-mono font-bold"
                     required
                   />
@@ -371,9 +423,9 @@ export const KeuanganModule: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Jatuh Tempo</label>
+                <label className="font-semibold text-slate-700 block mb-1">Jatuh Tempo (ISO Date)</label>
                 <input
-                  type="text"
+                  type="date"
                   value={formDueDate}
                   onChange={e => setFormDueDate(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-200"
@@ -381,17 +433,28 @@ export const KeuanganModule: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Deskripsi / Catatan</label>
+                <input
+                  type="text"
+                  value={formDescription}
+                  onChange={e => setFormDescription(e.target.value)}
+                  placeholder="Keterangan tagihan..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/25"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/25 cursor-pointer"
                 >
                   Terbitkan Tagihan
                 </button>

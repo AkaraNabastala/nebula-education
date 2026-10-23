@@ -1,0 +1,375 @@
+// Prisma Schema — Sistem Informasi Manajemen Sekolah Terintegrasi (SIM Sekolah Edutera)
+// Database: PostgreSQL
+// Framework Backend Target: NestJS + Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. IDENTITAS AKUN & SISTEM HAK AKSES
+// ==========================================
+
+enum UserCategory {
+  ADMIN_APLIKASI
+  GURU
+  SISWA
+  STAF
+}
+
+enum JabatanType {
+  WALI_KELAS
+  ADMIN_KURIKULUM
+  BENDAHARA
+  PEMBINA_EKSKUL
+  GURU_PIKET
+  ADMIN_KESISWAAN
+  KEPALA_SEKOLAH
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  passwordHash    String         @map("password_hash")
+  fullName        String         @map("full_name")
+  phone           String?
+  avatarUrl       String?        @map("avatar_url")
+  userCategory    UserCategory   @default(SISWA) @map("user_category")
+  status          AccountStatus  @default(ACTIVE)
+  schoolId        String         @map("school_id")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  school          School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments     UserAssignment[]
+  teacherProfile  Teacher?
+  studentProfile  Student?
+  auditLogs       AuditLog[]
+  recordedAttendances AttendanceRecord[] @relation("RecordedBy")
+
+  @@index([schoolId])
+  @@index([userCategory])
+  @@map("users")
+}
+
+// Penugasan & Jabatan Dinamis Berlingkup (Scoped Assignment)
+model UserAssignment {
+  id                String       @id @default(uuid())
+  userId            String       @map("user_id")
+  jabatan           JabatanType
+  classroomId       String?      @map("classroom_id")
+  academicYearId    String       @map("academic_year_id")
+  extraCurricularId String?      @map("extracurricular_id")
+  startDate         DateTime     @default(now()) @map("start_date")
+  endDate           DateTime?    @map("end_date")
+  isActive          Boolean      @default(true) @map("is_active")
+  assignedByUserId  String?      @map("assigned_by_user_id")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classroom         Classroom?   @relation(fields: [classroomId], references: [id])
+  academicYear      AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@index([userId, isActive])
+  @@index([jabatan, academicYearId])
+  @@map("user_assignments")
+}
+
+// ==========================================
+// 2. STRUKTUR SEKOLAH & AKADEMIK
+// ==========================================
+
+model School {
+  id          String       @id @default(uuid())
+  npsn        String       @unique
+  name        String
+  educationLevel String    @map("education_level") // SMP, MTs, SMA, MA, SMK
+  address     String?
+  city        String?
+  province    String?
+  phone       String?
+  email       String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  users         User[]
+  classrooms    Classroom[]
+  academicYears AcademicYear[]
+
+  @@map("schools")
+}
+
+model AcademicYear {
+  id          String       @id @default(uuid())
+  schoolId    String       @map("school_id")
+  name        String       // Contoh: "2026/2027"
+  semester    String       // "Ganjil" | "Genap"
+  startDate   DateTime     @map("start_date")
+  endDate     DateTime     @map("end_date")
+  isCurrent   Boolean      @default(false) @map("is_current")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments UserAssignment[]
+  classrooms  Classroom[]
+
+  @@index([schoolId, isCurrent])
+  @@map("academic_years")
+}
+
+model Classroom {
+  id             String       @id @default(uuid())
+  schoolId       String       @map("school_id")
+  academicYearId String       @map("academic_year_id")
+  name           String       // Contoh: "X-A", "XII RPL 1"
+  grade          Int          // 7, 8, 9, 10, 11, 12
+  major          String?      // IPA, IPS, RPL, TKJ
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  school         School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  students       Student[]
+  assignments    UserAssignment[]
+  journals       TeachingJournal[]
+  attendances    AttendanceRecord[]
+
+  @@index([schoolId, academicYearId])
+  @@map("classrooms")
+}
+
+// ==========================================
+// 3. GURU & SISWA
+// ==========================================
+
+model Teacher {
+  id              String       @id @default(uuid())
+  userId          String       @unique @map("user_id")
+  nip             String?      @unique
+  nuptk           String?      @unique
+  specialization  String?      // Contoh: "Matematika", "Bahasa Inggris"
+  joinDate        DateTime?    @map("join_date")
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journals        TeachingJournal[]
+  assessments     Assessment[]
+
+  @@map("teachers")
+}
+
+model Student {
+  id              String       @id @default(uuid())
+  userId          String       @unique @map("user_id")
+  classroomId     String       @map("classroom_id")
+  nisn            String       @unique
+  nis             String       @unique
+  gender          String       // "L" | "P"
+  birthPlace      String?      @map("birth_place")
+  birthDate       DateTime?    @map("birth_date")
+  parentName      String?      @map("parent_name")
+  parentPhone     String?      @map("parent_phone")
+  parentEmail     String?      @map("parent_email")
+  address         String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classroom       Classroom    @relation(fields: [classroomId], references: [id])
+  attendances     AttendanceRecord[]
+  leaveRequests   StudentLeaveRequest[]
+  invoices        Invoice[]
+  scores          StudentScore[]
+
+  @@index([classroomId])
+  @@map("students")
+}
+
+// ==========================================
+// 4. PRESENSI & JURNAL KELAS
+// ==========================================
+
+enum AttendanceStatus {
+  HADIR
+  IZIN
+  SAKIT
+  ALPA
+}
+
+model AttendanceRecord {
+  id              String           @id @default(uuid())
+  studentId       String           @map("student_id")
+  classroomId     String           @map("classroom_id")
+  date            DateTime         @db.Date
+  status          AttendanceStatus @default(HADIR)
+  note            String?
+  recordedByUserId String          @map("recorded_by_user_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classroom       Classroom        @relation(fields: [classroomId], references: [id])
+  recordedBy      User             @relation("RecordedBy", fields: [recordedByUserId], references: [id])
+
+  @@unique([studentId, date])
+  @@index([classroomId, date])
+  @@map("attendance_records")
+}
+
+model TeachingJournal {
+  id              String       @id @default(uuid())
+  teacherId       String       @map("teacher_id")
+  classroomId     String       @map("classroom_id")
+  subjectName     String       @map("subject_name")
+  teachingDate    DateTime     @map("teaching_date")
+  topic           String
+  description     String?
+  attendanceSummary String?    @map("attendance_summary")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  teacher         Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classroom       Classroom    @relation(fields: [classroomId], references: [id])
+
+  @@index([teacherId, teachingDate])
+  @@map("teaching_journals")
+}
+
+model StudentLeaveRequest {
+  id              String       @id @default(uuid())
+  studentId       String       @map("student_id")
+  leaveType       String       @map("leave_type") // SAKIT, IZIN, DISPENSASI
+  startDate       DateTime     @map("start_date")
+  endDate         DateTime     @map("end_date")
+  reason          String
+  attachmentUrl   String?      @map("attachment_url")
+  status          String       @default("PENDING") // PENDING, APPROVED, REJECTED
+  reviewedByUserId String?     @map("reviewed_by_user_id")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  student         Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, status])
+  @@map("student_leave_requests")
+}
+
+// ==========================================
+// 5. PENILAIAN & AKADEMIK
+// ==========================================
+
+model Assessment {
+  id              String       @id @default(uuid())
+  teacherId       String       @map("teacher_id")
+  title           String       // Contoh: "Ulangan Harian 1 Matriks"
+  assessmentType  String       @map("assessment_type") // TUGAS, UTS, UAS, PRAKTIKUM
+  maxScore        Float        @default(100) @map("max_score")
+  weight          Float        @default(1.0)
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  teacher         Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  scores          StudentScore[]
+
+  @@map("assessments")
+}
+
+model StudentScore {
+  id              String       @id @default(uuid())
+  assessmentId    String       @map("assessment_id")
+  studentId       String       @map("student_id")
+  score           Float
+  feedback        String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  assessment      Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  student         Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, studentId])
+  @@map("student_scores")
+}
+
+// ==========================================
+// 6. KEUANGAN & PEMBAYARAN MIDTRANS
+// ==========================================
+
+enum InvoiceStatus {
+  UPCOMING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentChannel {
+  MIDTRANS_SNAP
+  CASH_TELLER
+  BANK_TRANSFER
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  invoiceNo       String        @unique @map("invoice_no")
+  studentId       String        @map("student_id")
+  title           String        // Contoh: "SPP Bulan November 2026"
+  category        String        // SPP, Praktikum, Kegiatan, Gedung
+  amount          Decimal       @db.Decimal(12, 2)
+  amountPaid      Decimal       @default(0) @map("amount_paid") @db.Decimal(12, 2)
+  dueDate         DateTime      @map("due_date") @db.Date
+  status          InvoiceStatus @default(UPCOMING)
+  description     String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  payments        Payment[]
+
+  @@index([studentId, status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+model Payment {
+  id              String         @id @default(uuid())
+  invoiceId       String         @map("invoice_id")
+  amount          Decimal        @db.Decimal(12, 2)
+  paymentChannel  PaymentChannel @map("payment_channel")
+  paymentMethod   String?        @map("payment_method") // gopay, qris, bca_va, bri_va, mandiri_va, cash
+  midtransOrderId String?        @unique @map("midtrans_order_id")
+  transactionId   String?        @map("transaction_id")
+  transactionStatus String       @default("pending") @map("transaction_status") // settlement, pending, deny, expire, cancel
+  settledAt       DateTime?      @map("settled_at")
+  rawCallback     Json?          @map("raw_callback")
+  recordedByUserId String?       @map("recorded_by_user_id")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([midtransOrderId])
+  @@map("payments")
+}
+
+// ==========================================
+// 7. AUDIT LOG & KEAMANAN
+// ==========================================
+
+model AuditLog {
+  id              String       @id @default(uuid())
+  userId          String?      @map("user_id")
+  action          String       // CREATE_INVOICE, CASH_PAYMENT, UPDATE_PERMISSION, etc.
+  entity          String       // Invoice, UserAssignment, Student, etc.
+  entityId        String?      @map("entity_id")
+  details         Json?
+  ipAddress       String?      @map("ip_address")
+  userAgent       String?      @map("user_agent")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}

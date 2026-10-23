@@ -433,7 +433,7 @@ export const INITIAL_INVOICES: Invoice[] = [
     description: 'Iuran Penyelenggaraan Pendidikan (SPP) Reguler Semester Ganjil',
     amount: 350000,
     amount_paid: 0,
-    due_date: '10 Nov 2026',
+    due_date: '2026-11-10',
     status: 'upcoming',
     category: 'SPP'
   },
@@ -448,10 +448,10 @@ export const INITIAL_INVOICES: Invoice[] = [
     description: 'Iuran Penyelenggaraan Pendidikan (SPP) Reguler',
     amount: 350000,
     amount_paid: 350000,
-    due_date: '10 Okt 2026',
+    due_date: '2026-10-10',
     status: 'paid',
     payment_method: 'Midtrans QRIS / GoPay',
-    paid_at: '08 Okt 2026, 14:22 WIB',
+    paid_at: '2026-10-08T14:22:00Z',
     category: 'SPP'
   },
   {
@@ -465,10 +465,10 @@ export const INITIAL_INVOICES: Invoice[] = [
     description: 'Biaya modul praktikum dan lisensi laboratorium sains terpadu',
     amount: 250000,
     amount_paid: 250000,
-    due_date: '05 Nov 2026',
+    due_date: '2026-11-05',
     status: 'paid',
     payment_method: 'Midtrans BCA Virtual Account',
-    paid_at: '02 Nov 2026, 09:15 WIB',
+    paid_at: '2026-11-02T09:15:00Z',
     category: 'Praktikum'
   },
   {
@@ -482,7 +482,7 @@ export const INITIAL_INVOICES: Invoice[] = [
     description: 'Iuran Penyelenggaraan Pendidikan (SPP) Reguler',
     amount: 350000,
     amount_paid: 0,
-    due_date: '10 Okt 2026',
+    due_date: '2026-10-10',
     status: 'overdue',
     category: 'SPP'
   },
@@ -497,10 +497,10 @@ export const INITIAL_INVOICES: Invoice[] = [
     description: 'Fieldtrip observasi Pusat Riset & Teknologi Nasional',
     amount: 650000,
     amount_paid: 650000,
-    due_date: '15 Nov 2026',
+    due_date: '2026-11-15',
     status: 'paid',
     payment_method: 'Kasir Teller Sekolah (Cash)',
-    paid_at: '20 Okt 2026, 11:30 WIB',
+    paid_at: '2026-10-20T11:30:00Z',
     category: 'Kegiatan'
   },
   {
@@ -514,11 +514,12 @@ export const INITIAL_INVOICES: Invoice[] = [
     description: 'Iuran Penyelenggaraan Pendidikan (SPP) Reguler',
     amount: 350000,
     amount_paid: 0,
-    due_date: '10 Nov 2026',
+    due_date: '2026-11-10',
     status: 'upcoming',
     category: 'SPP'
   }
 ];
+
 
 export const INITIAL_JOURNALS: TeachingJournal[] = [
   {
