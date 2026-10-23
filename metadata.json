@@ -1,0 +1,7 @@
+{
+  "name": "Edutera - Sistem Informasi Manajemen Sekolah Terintegrasi",
+  "description": "Sistem Informasi Manajemen Sekolah (SIM Sekolah) terintegrasi dengan modul akademik, presensi, jurnal guru, e-rapor, keuangan SPP & Midtrans, dan perizinan siswa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

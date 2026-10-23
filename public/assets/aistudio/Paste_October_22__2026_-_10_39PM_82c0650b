@@ -1,0 +1,926 @@
+# MASTER PROMPT — SISTEM INFORMASI MANAJEMEN SEKOLAH TERINTEGRASI
+
+## 1. Peran dan Tujuan Proyek
+
+Bertindaklah sebagai Senior Full-Stack Developer, Software Architect, UI/UX Designer, Database Engineer, dan Application Security Engineer yang berpengalaman membangun sistem informasi pendidikan berskala besar.
+
+Saya ingin membangun sebuah **Sistem Informasi Manajemen Sekolah berbasis web** yang modern, responsif, aman, modular, dan mudah dikembangkan. Sistem ini ditujukan untuk institusi pendidikan menengah di Indonesia, meliputi:
+
+- SMP dan MTs.
+- SMA dan MA.
+- SMK.
+- Sekolah sederajat lainnya.
+
+Aplikasi harus dapat digunakan oleh satu sekolah maupun dikembangkan menjadi platform multi-sekolah pada masa mendatang.
+
+Sistem tidak boleh hanya berupa dashboard statis atau kumpulan halaman dengan data dummy. Setiap modul harus memiliki alur bisnis yang jelas, validasi, hak akses, struktur data, dan integrasi yang konsisten.
+
+Gunakan Bahasa Indonesia untuk antarmuka, format tanggal Indonesia, mata uang Rupiah (IDR), dan zona waktu Asia/Jakarta sebagai konfigurasi awal.
+
+## 2. Teknologi yang Digunakan
+
+### Frontend
+
+- React.js dengan TypeScript.
+- Vite sebagai build tool.
+- Tailwind CSS untuk styling.
+- Lucide React untuk seluruh ikon antarmuka.
+- React Router untuk routing.
+- TanStack Query untuk pengambilan, caching, dan sinkronisasi data server.
+- React Hook Form dan Zod untuk formulir dan validasi.
+- Recharts untuk grafik statistik jika diperlukan.
+
+Gunakan versi library yang kompatibel dan stabil saat implementasi dilakukan.
+
+### Backend dan database
+
+Gunakan arsitektur frontend dan backend yang terpisah dengan API yang terstruktur.
+
+Rekomendasi awal:
+
+- Node.js dengan NestJS atau Express menggunakan TypeScript.
+- PostgreSQL sebagai database relasional.
+- Prisma ORM untuk pemodelan dan migrasi database.
+- REST API dengan dokumentasi OpenAPI/Swagger.
+- Session atau access token yang aman dengan strategi autentikasi dan refresh token yang tepat.
+- Object storage untuk dokumen dan lampiran apabila diperlukan.
+
+Backend merupakan sumber kebenaran untuk validasi, perhitungan, dan otorisasi. Jangan menempatkan rahasia aplikasi, kredensial database, atau Server Key Midtrans di frontend.
+
+Jika memilih layanan backend terkelola seperti Supabase, jelaskan alasan pemilihannya dan implementasikan Row Level Security serta aturan akses yang benar.
+
+### Integrasi tambahan
+
+- Midtrans untuk pembayaran online.
+- Sistem presensi eksternal melalui API atau mekanisme sinkronisasi yang disepakati.
+- Ekspor laporan ke PDF, Excel, atau CSV sesuai kebutuhan.
+- Email atau notifikasi aplikasi untuk informasi penting.
+
+Jangan menganggap integrasi eksternal sudah tersedia sebelum dokumentasi, kredensial, dan mekanisme aksesnya benar-benar diberikan.
+
+## 3. Arsitektur dan Prinsip Pengembangan
+
+Terapkan prinsip berikut:
+
+1. Modular architecture, dengan setiap domain memiliki tanggung jawab yang jelas.
+2. Separation of concerns antara UI, business logic, API, dan database.
+3. Reusable components dan konsistensi design system.
+4. Role-Based Access Control (RBAC) berbasis permission, bukan sekadar menyembunyikan menu.
+5. Validasi di frontend dan backend.
+6. Audit log untuk tindakan penting.
+7. Soft delete hanya untuk data yang memang memerlukannya, dengan tetap mempertahankan integritas dan kewajiban retensi data.
+8. Database transaction untuk proses yang melibatkan banyak perubahan data.
+9. Pagination, filtering, searching, sorting, dan server-side processing untuk data berukuran besar.
+10. Error handling yang konsisten dan tidak membocorkan informasi sensitif.
+11. Pengujian otomatis untuk alur bisnis dan keamanan utama.
+12. Prinsip least privilege: setiap pengguna hanya memperoleh akses yang benar-benar diperlukan.
+
+Gunakan penamaan kode yang konsisten, struktur folder yang mudah dipahami, dan dokumentasi yang membantu pengembang lain melanjutkan proyek.
+
+## 4. Role dan Hak Akses Pengguna
+
+Rancang sistem otorisasi yang fleksibel. Pisahkan role, permission, jabatan, dan penugasan agar seseorang dapat memiliki beberapa tanggung jawab tanpa membuat akun duplikat.
+
+### A. Developer / Platform Administrator
+
+Role khusus untuk pengelolaan teknis platform.
+
+Fitur yang disarankan:
+
+- Mengelola tenant atau institusi sekolah apabila platform digunakan oleh banyak sekolah.
+- Mengelola konfigurasi platform dan fitur yang tersedia.
+- Memantau status layanan, integrasi, antrean pekerjaan, dan error aplikasi.
+- Memantau proses sinkronisasi data dan webhook.
+- Mengelola konfigurasi teknis dengan pembatasan yang ketat.
+- Mengakses audit log teknis.
+- Menjalankan maintenance dan migrasi melalui prosedur yang terkontrol.
+
+Developer tidak otomatis memiliki akses untuk mengubah nilai, pembayaran, atau presensi siswa. Akses dukungan terhadap data sekolah harus dibatasi, tercatat, dan diberikan berdasarkan kebutuhan yang sah.
+
+### B. Admin Sekolah / Admin Aplikasi
+
+Role untuk pengelolaan operasional sekolah.
+
+Fitur:
+
+- Mengelola profil dan identitas sekolah.
+- Mengelola tahun ajaran dan semester.
+- Mengelola data siswa, guru, tenaga kependidikan, serta akun pengguna.
+- Mengelola program keahlian, jurusan, rombongan belajar, dan struktur kelas.
+- Mengelola mata pelajaran.
+- Mengelola konfigurasi aplikasi dan pengaturan akses sesuai kewenangan.
+- Mengelola kalender akademik.
+- Melihat dashboard statistik sekolah.
+- Mengelola proses kenaikan kelas, kelulusan, dan mutasi siswa sesuai kebijakan.
+- Melihat audit log operasional yang menjadi kewenangannya.
+
+### C. Admin Kurikulum
+
+Pisahkan menjadi role tersendiri atau permission yang dapat diberikan kepada Admin Sekolah.
+
+Fitur:
+
+- Mengelola struktur kurikulum.
+- Mengelola jadwal pelajaran dan penugasan guru.
+- Mengelola pembagian jam mengajar.
+- Mengatur guru pengganti dan guru piket.
+- Mengelola pembagian kelas serta mata pelajaran.
+- Memantau jurnal mengajar.
+- Memantau presensi pembelajaran.
+- Memantau pengisian nilai.
+- Mengelola kalender akademik dan jadwal ujian.
+- Melakukan koreksi atau pembukaan kembali periode pengisian dengan alasan dan audit log.
+
+### D. Guru
+
+Fitur:
+
+- Melihat profil dan jadwal mengajar.
+- Melihat daftar kelas dan mata pelajaran yang ditugaskan.
+- Melakukan presensi siswa pada sesi pembelajaran yang menjadi tanggung jawabnya.
+- Mengisi jurnal pembelajaran.
+- Membuat komponen penilaian yang fleksibel.
+- Menginput nilai tugas, ulangan, praktik, proyek, dan asesmen lainnya.
+- Melihat rekap nilai siswa pada kelas dan mata pelajaran yang menjadi kewenangannya.
+- Mengajukan koreksi nilai sesuai prosedur.
+- Melihat riwayat aktivitas pengajaran.
+
+Guru hanya dapat mengisi jurnal dan presensi pembelajaran untuk sesi yang ditugaskan kepadanya, termasuk penugasan pengganti yang masih berlaku.
+
+### E. Wali Kelas
+
+Wali kelas merupakan jabatan atau permission tambahan bagi pengguna dengan role Guru.
+
+Fitur tambahan:
+
+- Melihat seluruh siswa dalam kelas binaannya.
+- Melihat rekap presensi sekolah dan presensi pembelajaran.
+- Memantau nilai semua mata pelajaran siswa dalam kelas binaannya sesuai kebijakan.
+- Memantau pembayaran siswa sebatas informasi yang diizinkan sekolah.
+- Mengelola pengajuan izin siswa.
+- Memasukkan pengajuan izin secara manual untuk siswa yang tidak memiliki perangkat.
+- Memverifikasi atau meneruskan izin sesuai alur persetujuan.
+- Menulis catatan perkembangan siswa.
+- Mengelola catatan wali kelas dan komentar rapor.
+- Memantau kelengkapan nilai dan jurnal guru.
+- Membantu proses finalisasi rapor jika diberi kewenangan.
+
+Wali kelas tidak otomatis boleh mengubah nilai mata pelajaran guru lain.
+
+### F. Admin Keuangan
+
+Fitur:
+
+- Mengelola jenis tagihan dan komponen pembayaran.
+- Mengatur nominal, periode, jatuh tempo, serta aturan tagihan.
+- Mengelola tagihan individual dan massal.
+- Menginput pembayaran offline secara manual.
+- Memproses bukti pembayaran dan koreksi transaksi melalui prosedur resmi.
+- Melihat transaksi Midtrans dan status pembayarannya.
+- Mengelola tunggakan dan riwayat pembayaran.
+- Mengelola diskon, keringanan, beasiswa, atau pembebasan tagihan sesuai otorisasi.
+- Melakukan rekonsiliasi pembayaran.
+- Mengunduh laporan keuangan.
+- Mencatat pembatalan dan pengembalian dana sesuai kebijakan.
+- Melihat audit log transaksi keuangan.
+
+Admin keuangan tidak otomatis dapat mengubah nilai akademik atau mengelola jurnal guru.
+
+### G. Siswa
+
+Fitur:
+
+- Melihat profil pribadi.
+- Melihat kelas, jadwal, dan mata pelajaran.
+- Melihat presensi sekolah yang disinkronkan.
+- Melihat presensi setiap pembelajaran.
+- Melihat presensi ekstrakurikuler jika tersedia.
+- Melihat rekap dan persentase kehadiran.
+- Melihat tagihan, kekurangan pembayaran, dan riwayat transaksi.
+- Melakukan pembayaran online melalui Midtrans.
+- Melihat status nilai yang telah dipublikasikan.
+- Melihat rapor yang telah difinalisasi.
+- Mengajukan izin atau ketidakhadiran jika kebijakan sekolah mengizinkan.
+- Melihat pengumuman sekolah.
+- Mengunduh dokumen yang boleh diakses.
+
+Siswa hanya dapat melihat data miliknya sendiri.
+
+### H. Orang Tua / Wali Murid (opsional)
+
+Sediakan kemungkinan pengembangan portal orang tua.
+
+Fitur:
+
+- Melihat presensi anak.
+- Melihat jadwal dan pengumuman.
+- Melihat tagihan serta riwayat pembayaran anak yang terhubung.
+- Melihat nilai dan rapor yang dipublikasikan.
+- Menerima notifikasi ketidakhadiran dan tunggakan sesuai kebijakan.
+- Memantau pengajuan izin.
+
+Hubungan orang tua dan siswa harus diverifikasi. Akun orang tua tidak boleh otomatis mendapatkan akses hanya berdasarkan nomor telepon atau data yang mudah ditebak.
+
+## 5. Modul Manajemen Sekolah
+
+### A. Dashboard
+
+Buat dashboard yang menyesuaikan role pengguna.
+
+Contoh informasi:
+
+- Jumlah siswa aktif.
+- Jumlah guru dan kelas.
+- Ringkasan presensi hari ini.
+- Statistik keterlambatan dan ketidakhadiran.
+- Ringkasan pembayaran dan tunggakan.
+- Kelengkapan jurnal guru.
+- Status pengisian nilai.
+- Jadwal kegiatan mendatang.
+- Aktivitas terbaru yang relevan.
+
+Dashboard harus menggunakan data aktual dari backend, bukan angka statis.
+
+Jangan menampilkan informasi sensitif keuangan kepada pengguna yang tidak memiliki izin.
+
+### B. Manajemen data induk
+
+Sediakan pengelolaan:
+
+- Profil sekolah.
+- Tahun ajaran dan semester.
+- Data guru dan siswa.
+- Mata pelajaran.
+- Jurusan dan program keahlian.
+- Tingkat kelas.
+- Rombongan belajar.
+- Penugasan guru.
+- Wali kelas.
+- Kalender akademik.
+- Jenis tagihan.
+- Ekstrakurikuler.
+- Akun pengguna dan status akun.
+
+Dukung impor data melalui CSV atau Excel dengan validasi, preview, pelaporan kesalahan, dan pencegahan duplikasi.
+
+## 6. Modul Pembayaran Siswa
+
+Buat modul pembayaran yang mendukung pembayaran online dan offline.
+
+### Jenis tagihan
+
+Sediakan konfigurasi fleksibel, misalnya:
+
+- SPP.
+- Biaya pendaftaran.
+- Uang kegiatan.
+- Biaya ujian.
+- Biaya praktik atau kegiatan khusus.
+- Tagihan lain yang ditentukan sekolah.
+
+Jenis tagihan bukan daftar yang dikunci di dalam kode. Admin yang berwenang harus dapat mengatur jenis dan aturannya.
+
+### Fitur pembayaran
+
+1. Membuat tagihan berdasarkan siswa, kelas, tahun ajaran, atau periode.
+2. Menampilkan nominal tagihan, pembayaran, sisa tagihan, dan statusnya.
+3. Mendukung pembayaran sebagian apabila diizinkan sekolah.
+4. Mendukung pembayaran beberapa tagihan dalam satu transaksi jika aturan bisnis mengizinkan.
+5. Menyediakan riwayat transaksi.
+6. Membuat bukti pembayaran yang dapat diunduh atau dicetak.
+7. Menangani diskon, beasiswa, dan pembebasan biaya melalui otorisasi.
+8. Mencatat pembayaran offline oleh petugas keuangan.
+9. Menyediakan laporan tunggakan dan rekap pembayaran.
+
+### Integrasi Midtrans
+
+Gunakan alur pembayaran yang aman:
+
+- Backend membuat transaksi dan menghubungi Midtrans menggunakan Server Key.
+- Frontend menampilkan metode pembayaran yang tersedia.
+- Status transaksi diperbarui melalui webhook yang diverifikasi.
+- Lakukan validasi signature, nominal, identitas transaksi, dan status pembayaran.
+- Terapkan idempotensi agar webhook berulang tidak menyebabkan pembayaran ganda.
+- Tangani status pending, settlement, expire, deny, cancel, dan refund sesuai mekanisme provider.
+- Sediakan proses rekonsiliasi jika notifikasi terlambat atau gagal.
+- Simpan referensi transaksi dan riwayat perubahan status.
+
+Jangan menganggap redirect kembali dari halaman pembayaran sebagai bukti bahwa transaksi berhasil.
+
+Jangan pernah menyimpan informasi kartu pembayaran yang sensitif.
+
+## 7. Modul Presensi Sekolah
+
+Presensi kedatangan siswa dilakukan melalui aplikasi eksternal. Aplikasi ini menerima data presensi tersebut melalui integrasi.
+
+Sediakan:
+
+- API integrasi jika tersedia.
+- Mekanisme sinkronisasi berkala jika API mendukungnya.
+- Import data sebagai alternatif.
+- Validasi identitas siswa.
+- Pemetaan ID siswa eksternal dengan ID internal.
+- Pencegahan data duplikat.
+- Penanganan data terlambat atau gagal diproses.
+- Riwayat sinkronisasi.
+- Log kesalahan dan mekanisme retry.
+- Penyesuaian data melalui proses koreksi berizin.
+
+Status presensi dapat meliputi hadir, terlambat, izin, sakit, tanpa keterangan, atau status lain yang dapat dikonfigurasi sesuai kebijakan sekolah.
+
+Tampilkan rekap harian, mingguan, bulanan, per semester, dan per tahun ajaran.
+
+Bedakan presensi kedatangan di sekolah dengan presensi pada setiap sesi pembelajaran.
+
+## 8. Modul Presensi Pembelajaran
+
+Presensi pembelajaran diinput oleh guru sesuai jadwal mengajar.
+
+### Alur utama
+
+1. Sistem mengambil jadwal pembelajaran aktif.
+2. Guru membuka kelas dan sesi pembelajaran yang ditugaskan.
+3. Sistem menampilkan daftar siswa yang terdaftar pada kelas tersebut.
+4. Guru menginput status kehadiran setiap siswa.
+5. Sistem memvalidasi kewenangan, waktu sesi, dan status penguncian data.
+6. Guru menyimpan presensi.
+7. Sistem mencatat waktu, pengguna, dan riwayat koreksi.
+8. Siswa, wali kelas, dan pihak lain yang berwenang dapat melihat rekap.
+
+### Aturan penting
+
+- Guru hanya dapat menginput presensi untuk kelas dan sesi yang ditugaskan kepadanya.
+- Guru pengganti harus memiliki penugasan pengganti yang sah.
+- Admin Kurikulum dapat menugaskan guru piket atau guru pengganti sesuai prosedur.
+- Perubahan presensi yang sudah dikunci harus melalui mekanisme koreksi yang tercatat.
+- Sistem harus mencegah presensi ganda untuk siswa yang sama dalam sesi yang sama.
+- Siswa tidak dapat mengubah status kehadirannya sendiri.
+
+Sediakan rekap per mata pelajaran, guru, kelas, siswa, dan periode.
+
+## 9. Modul Ekstrakurikuler
+
+Sediakan modul ekstrakurikuler sebagai modul terpisah yang dapat diaktifkan sesuai kebutuhan.
+
+Fitur:
+
+- Mengelola jenis ekstrakurikuler.
+- Menetapkan pembina.
+- Mengelola anggota.
+- Mengatur jadwal kegiatan.
+- Menginput presensi anggota oleh pembina yang ditugaskan.
+- Melihat rekap kehadiran.
+- Menambahkan catatan kegiatan jika diperlukan.
+
+Pembina hanya dapat mengelola ekstrakurikuler yang menjadi tanggung jawabnya.
+
+## 10. Modul Jurnal Guru
+
+Jurnal guru merupakan catatan resmi pelaksanaan kegiatan pembelajaran.
+
+Setiap jurnal minimal mencakup:
+
+- Tanggal.
+- Jam pelajaran.
+- Tahun ajaran dan semester.
+- Kelas.
+- Mata pelajaran.
+- Guru pengajar.
+- Materi pembelajaran.
+- Tujuan atau kompetensi pembelajaran.
+- Ringkasan kegiatan pembelajaran.
+- Metode pembelajaran.
+- Catatan kendala atau tindak lanjut.
+- Status pelaksanaan.
+- Informasi presensi yang terkait dengan sesi.
+
+Jurnal harus terhubung dengan jadwal dan sesi pembelajaran yang sah.
+
+Aturan:
+
+- Guru hanya dapat mengisi jurnal pada sesi yang ditugaskan kepadanya.
+- Guru pengganti harus tercatat sebagai pelaksana pengganti.
+- Jurnal tidak boleh dibuat berulang untuk sesi yang sama tanpa mekanisme koreksi.
+- Perubahan setelah jurnal dikunci harus tercatat.
+- Admin Kurikulum dapat memantau kelengkapan jurnal.
+
+Sediakan tampilan riwayat, filter, pencarian, ekspor PDF, dan cetak jurnal.
+
+## 11. Modul Jadwal Pelajaran
+
+Fitur:
+
+- Membuat jadwal per kelas.
+- Menetapkan guru dan mata pelajaran.
+- Menetapkan hari, jam mulai, jam selesai, dan ruang.
+- Mengatur jumlah jam pelajaran.
+- Menangani jadwal khusus, perubahan, dan guru pengganti.
+- Menampilkan jadwal guru dan siswa.
+- Menyediakan tampilan mingguan dan harian.
+- Mengimpor jadwal.
+- Memvalidasi bentrok jadwal.
+
+Sistem harus dapat mendeteksi bentrok guru, kelas, dan ruang pada waktu yang sama.
+
+Jangan mengizinkan jadwal aktif yang saling bertentangan tanpa mekanisme pengecualian yang sah dan tercatat.
+
+## 12. Modul Penilaian dan Rapor
+
+Sistem penilaian harus fleksibel dan tidak mengunci sekolah pada satu jenis penilaian.
+
+### Komponen penilaian
+
+Guru dapat membuat komponen seperti:
+
+- Tugas.
+- Ulangan harian.
+- Kuis.
+- Praktik.
+- Proyek.
+- Portofolio.
+- Penilaian tengah semester.
+- Penilaian akhir semester.
+- Asesmen lain sesuai kebijakan sekolah.
+
+Guru dapat mengatur nama, kategori, bobot, nilai maksimum, tanggal, deskripsi, dan status publikasi komponen.
+
+Sediakan konfigurasi skala penilaian, aturan pembulatan, bobot, dan formula nilai akhir yang ditetapkan sekolah.
+
+Jangan mengasumsikan satu formula nilai berlaku untuk seluruh sekolah atau semua kurikulum.
+
+### Fitur penilaian
+
+- Input nilai secara individual atau massal.
+- Validasi rentang nilai.
+- Impor nilai melalui spreadsheet.
+- Penyimpanan draft.
+- Status pengisian dan finalisasi.
+- Riwayat koreksi nilai.
+- Penguncian nilai setelah periode ditutup.
+- Mekanisme pengajuan koreksi.
+- Publikasi nilai kepada siswa setelah diizinkan.
+- Rekap nilai per siswa, kelas, mata pelajaran, dan semester.
+
+### Rapor
+
+- Rekap nilai mata pelajaran.
+- Nilai akhir sesuai konfigurasi sekolah.
+- Deskripsi capaian jika diperlukan.
+- Catatan wali kelas.
+- Rekap presensi.
+- Identitas siswa dan sekolah.
+- Pengesahan sesuai kewenangan.
+- Unduhan dan cetak rapor PDF.
+
+Guru mata pelajaran hanya dapat mengelola nilai yang menjadi kewenangannya. Wali kelas dan Admin Kurikulum dapat memantau kelengkapan dan menjalankan proses sesuai izin.
+
+## 13. Modul Wali Kelas dan Perizinan Siswa
+
+Sediakan halaman khusus wali kelas untuk mengelola siswa dalam kelas binaannya.
+
+### Pengajuan izin online
+
+Siswa dapat mengajukan izin dengan informasi:
+
+- Tanggal mulai dan selesai.
+- Jenis izin.
+- Alasan.
+- Keterangan tambahan.
+- Lampiran pendukung jika diperlukan.
+
+Sediakan status pengajuan seperti draft, diajukan, menunggu verifikasi, disetujui, ditolak, dan dibatalkan sesuai alur yang dipilih.
+
+### Input manual
+
+Wali kelas atau petugas yang diberi kewenangan dapat memasukkan pengajuan izin secara manual bagi siswa yang tidak memiliki perangkat.
+
+Data tetap harus mencatat siapa yang memasukkan, kapan, dan apakah data dimasukkan atas nama siswa atau wali.
+
+### Integrasi presensi
+
+Izin yang disetujui dapat menjadi informasi pendukung untuk koreksi presensi, tetapi tidak boleh secara otomatis menimpa catatan kehadiran yang sudah sah tanpa aturan yang jelas.
+
+Sediakan riwayat pengajuan dan koreksi agar keputusan dapat ditelusuri.
+
+## 14. Modul Kenaikan Kelas dan Tahun Ajaran
+
+Ini merupakan modul penting karena struktur kelas dan keanggotaan siswa dapat berubah setiap tahun.
+
+Sediakan:
+
+- Pembuatan tahun ajaran baru.
+- Pembukaan dan penutupan semester.
+- Penetapan status kenaikan kelas.
+- Penetapan siswa yang tinggal kelas.
+- Penetapan siswa lulus.
+- Pengelolaan siswa pindahan.
+- Arsip struktur kelas tahun sebelumnya.
+- Penempatan siswa ke rombongan belajar baru.
+- Riwayat kelas setiap siswa.
+- Preview dan validasi sebelum proses disahkan.
+- Laporan perubahan keanggotaan kelas.
+
+### Dua metode pembagian kelas
+
+**Metode 1 — Naik kelas dengan anggota tetap**
+
+Siswa dipindahkan ke tingkat berikutnya dengan mempertahankan kelompok atau urutan anggota yang sama, sesuai kebijakan sekolah.
+
+**Metode 2 — Pengacakan atau rotasi kelas**
+
+Siswa didistribusikan kembali ke kelas tujuan.
+
+Sediakan mekanisme penempatan manual, pengacakan, dan penyesuaian hasil secara manual.
+
+Jika menggunakan pengacakan, pastikan:
+
+- Semua siswa yang memenuhi syarat ditempatkan tepat satu kali.
+- Tidak ada siswa yang hilang atau terduplikasi.
+- Kapasitas kelas dapat dikonfigurasi.
+- Aturan pemisahan atau pengelompokan siswa dapat ditambahkan.
+- Hasil dapat ditinjau sebelum disahkan.
+- Proses dapat dibatalkan sebelum finalisasi.
+- Penempatan yang telah disahkan memiliki riwayat audit.
+
+Jangan menghapus data kelas dan nilai tahun sebelumnya ketika siswa naik kelas.
+
+Gunakan riwayat keanggotaan kelas berdasarkan tahun ajaran agar laporan historis tetap akurat.
+
+## 15. Modul Dokumen dan Ekspor Laporan
+
+Buat pusat laporan yang dapat diakses sesuai hak masing-masing role.
+
+Laporan yang disarankan:
+
+- Jurnal guru.
+- Presensi sekolah.
+- Presensi pembelajaran.
+- Presensi ekstrakurikuler.
+- Rekap kehadiran siswa.
+- Rekap pembayaran.
+- Tunggakan pembayaran.
+- Bukti pembayaran.
+- Rekap nilai.
+- Daftar nilai per kelas.
+- Rapor siswa.
+- Jadwal pelajaran.
+- Daftar siswa dan guru.
+- Rekap kenaikan kelas.
+- Laporan audit sesuai izin.
+
+Format keluaran:
+
+- PDF untuk laporan resmi dan cetak.
+- Excel atau XLSX untuk laporan yang memerlukan pengolahan data.
+- CSV untuk pertukaran data.
+
+Gunakan filter tahun ajaran, semester, kelas, mata pelajaran, tanggal, dan parameter lain yang relevan.
+
+Laporan harus dihasilkan dari data backend yang sudah divalidasi. Jangan mempercayai filter atau parameter dari frontend sebagai batas keamanan.
+
+Pastikan format dokumen memiliki identitas sekolah, judul, periode, tanggal pembuatan, nomor halaman jika diperlukan, dan tata letak yang rapi.
+
+## 16. Fitur Tambahan yang Direkomendasikan
+
+Pertimbangkan fitur berikut agar aplikasi dapat berkembang menjadi sistem sekolah yang lebih lengkap.
+
+### Prioritas tinggi
+
+1. Pengumuman sekolah.
+2. Kalender akademik.
+3. Notifikasi aplikasi.
+4. Pengelolaan dokumen siswa.
+5. Impor data massal.
+6. Audit log.
+7. Pengelolaan akun dan reset kata sandi.
+8. Pengaturan periode pengisian jurnal, presensi, dan nilai.
+9. Pusat laporan.
+10. Rekonsiliasi transaksi pembayaran.
+
+### Prioritas menengah
+
+1. Portal orang tua.
+2. Pengelolaan ujian dan asesmen.
+3. Catatan perkembangan siswa.
+4. Manajemen surat sekolah.
+5. Peminjaman inventaris.
+6. Pengelolaan perpustakaan.
+7. Pengelolaan kegiatan dan ekstrakurikuler.
+8. Notifikasi melalui email atau WhatsApp melalui penyedia resmi.
+9. Manajemen tiket bantuan dan pelaporan masalah.
+10. Analitik akademik dan operasional.
+
+Fitur tambahan harus modular. Jangan membangun seluruh fitur sekaligus jika dapat menghambat penyelesaian fondasi aplikasi.
+
+## 17. UI/UX Design System
+
+Buat desain antarmuka yang modern, bersih, profesional, dan mudah digunakan oleh guru maupun staf administrasi.
+
+### Prinsip desain
+
+- Dashboard berbeda sesuai role.
+- Sidebar responsif dengan navigasi berdasarkan permission.
+- Header dengan informasi pengguna dan notifikasi.
+- Breadcrumb untuk halaman bertingkat.
+- Tabel data yang mendukung pencarian, filter, pagination, dan sorting.
+- Formulir dengan label jelas dan pesan validasi yang mudah dipahami.
+- Modal atau dialog konfirmasi untuk tindakan penting.
+- Toast untuk umpan balik tindakan.
+- Loading state, skeleton, empty state, error state, dan success state.
+- Desain responsif untuk desktop, tablet, dan ponsel.
+- Aksesibilitas dengan kontras memadai, fokus keyboard, dan label kontrol.
+- Konsistensi komponen, spacing, tipografi, warna, dan radius.
+
+Gunakan Lucide React secara konsisten. Jangan menggunakan emoji sebagai pengganti ikon antarmuka.
+
+### Rekomendasi visual
+
+Gunakan gaya dashboard SaaS pendidikan yang modern dengan:
+
+- Latar belakang netral.
+- Warna utama biru atau indigo.
+- Permukaan kartu yang bersih.
+- Hierarki tipografi yang jelas.
+- Badge status dengan warna yang konsisten.
+- Grafik sederhana dan informatif.
+- Tabel yang mudah dibaca.
+- Navigasi yang tidak terlalu padat.
+
+Hindari terlalu banyak gradasi, bayangan berlebihan, dekorasi yang tidak memiliki fungsi, dan tampilan yang menyerupai template generik tanpa identitas.
+
+Buat design tokens dan reusable UI components agar keseluruhan aplikasi konsisten.
+
+## 18. Struktur Data dan Database
+
+Rancang database relasional yang dinormalisasi sesuai kebutuhan.
+
+Entitas awal yang perlu dipertimbangkan:
+
+- schools atau tenants.
+- users.
+- roles.
+- permissions.
+- user_roles.
+- role_permissions.
+- student_profiles.
+- teacher_profiles.
+- parent_profiles.
+- student_guardians.
+- academic_years.
+- semesters.
+- departments atau study_programs.
+- grade_levels.
+- classes.
+- student_class_enrollments.
+- subjects.
+- teacher_assignments.
+- homeroom_assignments.
+- schedules.
+- lesson_sessions.
+- attendance_records.
+- attendance_import_batches.
+- attendance_corrections.
+- extracurricular_activities.
+- extracurricular_members.
+- extracurricular_attendance.
+- teaching_journals.
+- assessment_categories.
+- assessments.
+- student_scores.
+- report_cards.
+- student_leave_requests.
+- billing_types.
+- invoices.
+- invoice_items.
+- payments.
+- payment_allocations.
+- payment_provider_transactions.
+- payment_webhook_events.
+- announcements.
+- notifications.
+- documents.
+- audit_logs.
+
+Daftar tersebut merupakan titik awal, bukan skema final. Evaluasi relasi dan normalisasi sebelum migrasi dibuat.
+
+Perhatikan:
+
+- Primary key dan foreign key.
+- Unique constraints.
+- Indeks untuk pencarian dan laporan.
+- Timestamp pembuatan dan perubahan.
+- Status data.
+- Referensi tahun ajaran dan semester.
+- Relasi pengguna dengan sekolah.
+- Riwayat perubahan kelas siswa.
+- Integritas transaksi pembayaran.
+- Pencegahan duplikasi presensi dan penilaian.
+- Pembatasan akses antar sekolah jika menggunakan multi-tenant.
+
+Gunakan transaksi database untuk proses penting dan pertimbangkan strategi arsip serta retensi data.
+
+## 19. Keamanan dan Privasi
+
+Terapkan keamanan sejak tahap desain.
+
+Persyaratan:
+
+- Password hashing yang aman.
+- Autentikasi dan manajemen sesi yang tepat.
+- Rate limiting untuk endpoint sensitif.
+- Validasi input di server.
+- Proteksi terhadap SQL injection, XSS, CSRF, dan akses objek tanpa otorisasi.
+- Pemeriksaan permission pada setiap endpoint yang dilindungi.
+- Pembatasan unggahan file berdasarkan jenis, ukuran, dan isi.
+- Penyimpanan file sensitif dengan akses terkontrol.
+- Manajemen secret melalui environment variables atau secret manager.
+- Audit log untuk perubahan penting.
+- Backup database dan prosedur pemulihan.
+- Pembatasan akses data pribadi dan keuangan.
+- Proteksi terhadap manipulasi harga, nominal tagihan, nilai, dan status transaksi dari frontend.
+- Pengujian kebocoran data antar pengguna dan antar sekolah.
+
+Patuhi ketentuan perlindungan data pribadi yang berlaku di Indonesia, termasuk UU Perlindungan Data Pribadi dan ketentuan terkait data anak.
+
+Jangan pernah menaruh Server Key Midtrans, password database, atau secret backend di kode frontend maupun repository publik.
+
+## 20. Testing dan Quality Assurance
+
+Buat pengujian secara bertahap:
+
+- Unit test untuk fungsi perhitungan dan validasi.
+- Integration test untuk API dan database.
+- Authorization test untuk setiap role.
+- End-to-end test untuk alur utama.
+- Pengujian pembayaran menggunakan sandbox.
+- Pengujian webhook berulang dan status transaksi.
+- Pengujian sinkronisasi presensi.
+- Pengujian proses kenaikan kelas.
+- Pengujian bentrok jadwal.
+- Pengujian ekspor laporan.
+- Pengujian responsivitas dan aksesibilitas.
+
+Contoh skenario wajib:
+
+- Guru tidak dapat mengubah nilai kelas yang tidak ditugaskan.
+- Guru tidak dapat mengisi presensi untuk sesi guru lain tanpa penugasan pengganti.
+- Siswa tidak dapat melihat profil atau pembayaran siswa lain.
+- Admin keuangan tidak dapat mengubah nilai akademik tanpa permission khusus.
+- Webhook pembayaran tidak dapat dipakai untuk memalsukan pembayaran.
+- Siswa tidak dapat ditempatkan dua kali dalam satu proses kenaikan kelas.
+- Perubahan nilai dan pembayaran dapat ditelusuri.
+- Pengguna satu sekolah tidak dapat mengakses data sekolah lain.
+
+## 21. Deployment dan Operasional
+
+Siapkan konfigurasi untuk:
+
+- Development.
+- Testing atau staging.
+- Production.
+
+Sediakan:
+
+- Environment configuration.
+- Database migration.
+- Seed data untuk development.
+- Logging dan monitoring.
+- Backup dan restore.
+- Dokumentasi API.
+- Penanganan error.
+- CI/CD apabila diperlukan.
+- Panduan deployment.
+- Panduan konfigurasi integrasi eksternal.
+- Prosedur rollback untuk perubahan yang berisiko.
+
+Jangan menggunakan data pribadi siswa sungguhan dalam seed data atau pengujian.
+
+## 22. Tahapan Pengerjaan Proyek
+
+Kerjakan proyek secara bertahap dan jangan langsung menghasilkan seluruh aplikasi dalam satu respons.
+
+### Tahap 1 — Analisis dan perencanaan
+
+- Analisis kebutuhan.
+- Identifikasi aktor dan permission.
+- Susun alur bisnis.
+- Buat diagram arsitektur.
+- Buat rancangan ERD.
+- Identifikasi kebutuhan integrasi.
+- Tentukan MVP dan backlog fitur.
+- Identifikasi risiko teknis dan keputusan yang masih perlu dikonfirmasi.
+
+### Tahap 2 — Fondasi aplikasi
+
+- Inisialisasi repository.
+- Setup React, TypeScript, Vite, Tailwind CSS, dan Lucide React.
+- Setup backend.
+- Setup PostgreSQL dan ORM.
+- Setup autentikasi.
+- Implementasi RBAC.
+- Setup routing.
+- Setup design system.
+- Buat layout dashboard responsif.
+- Siapkan migrasi dan seed data pengembangan.
+
+### Tahap 3 — Data induk dan akademik
+
+- Manajemen pengguna.
+- Data siswa dan guru.
+- Tahun ajaran dan semester.
+- Kelas dan mata pelajaran.
+- Penugasan guru.
+- Jadwal pelajaran.
+
+### Tahap 4 — Presensi dan jurnal
+
+- Integrasi presensi sekolah.
+- Presensi pembelajaran.
+- Penugasan guru pengganti.
+- Jurnal guru.
+- Izin siswa.
+- Presensi ekstrakurikuler.
+
+### Tahap 5 — Penilaian dan rapor
+
+- Komponen asesmen.
+- Input nilai.
+- Formula nilai yang dapat dikonfigurasi.
+- Monitoring pengisian.
+- Finalisasi dan publikasi rapor.
+
+### Tahap 6 — Keuangan
+
+- Jenis tagihan.
+- Pembuatan invoice.
+- Pembayaran offline.
+- Integrasi Midtrans sandbox.
+- Webhook.
+- Rekonsiliasi.
+- Bukti pembayaran dan laporan.
+
+### Tahap 7 — Kenaikan kelas dan laporan
+
+- Proses kenaikan kelas.
+- Pengacakan kelas.
+- Riwayat akademik.
+- Ekspor PDF dan Excel.
+- Pengujian integritas data.
+
+### Tahap 8 — Penyempurnaan dan deployment
+
+- Pengujian menyeluruh.
+- Audit keamanan.
+- Optimasi performa.
+- Backup dan pemulihan.
+- Dokumentasi.
+- Deployment staging.
+- Uji penerimaan pengguna.
+- Deployment production.
+
+Tahapan tersebut boleh disesuaikan berdasarkan dependensi teknis, tetapi fondasi autentikasi, data induk, dan otorisasi harus disiapkan sebelum modul bisnis utama dikembangkan.
+
+## 23. Format Hasil yang Diharapkan
+
+Untuk setiap tahap, berikan:
+
+1. Tujuan dan ruang lingkup.
+2. Keputusan teknis dan alasannya.
+3. Struktur folder yang relevan.
+4. Skema database atau migrasi yang diperlukan.
+5. Implementasi kode yang benar-benar berfungsi.
+6. Instruksi instalasi dan menjalankan aplikasi.
+7. Contoh environment variables tanpa secret sungguhan.
+8. Endpoint API dan contoh request/response jika relevan.
+9. Penjelasan alur bisnis.
+10. Pengujian dan kriteria penerimaan.
+11. Risiko, keterbatasan, dan pekerjaan yang belum selesai.
+
+Jangan mengarang bahwa suatu integrasi berhasil apabila belum diuji. Jangan menyebut fitur selesai apabila hanya berupa mockup atau data statis.
+
+Hindari menghasilkan satu file komponen yang sangat besar. Pecah kode berdasarkan domain dan tanggung jawab, tetapi jangan membuat abstraksi berlebihan sebelum memang diperlukan.
+
+Jika informasi penting belum tersedia, tanyakan hanya keputusan yang benar-benar menghambat desain atau implementasi. Untuk hal yang belum pasti, berikan rekomendasi awal dan jelaskan asumsi yang digunakan.
+
+## 24. Instruksi Awal untuk Memulai
+
+**Jangan langsung menulis seluruh kode aplikasi.**
+
+Mulailah dengan Tahap 1, yaitu analisis dan perencanaan proyek.
+
+Hasil pertama yang harus diberikan:
+
+1. Ringkasan kebutuhan sistem.
+2. Daftar role, permission, dan batas akses.
+3. Daftar modul beserta dependensinya.
+4. Alur bisnis pembayaran, presensi, jurnal, penilaian, dan kenaikan kelas.
+5. Rekomendasi arsitektur frontend, backend, dan database.
+6. ERD awal beserta penjelasan relasi entitas.
+7. Struktur folder yang direkomendasikan.
+8. Rencana implementasi MVP.
+9. Daftar risiko dan pertanyaan penting yang perlu dikonfirmasi.
+10. Kriteria penerimaan untuk menyatakan MVP siap diuji.
+
+Pastikan seluruh rekomendasi konsisten satu sama lain. Utamakan fondasi yang aman, alur bisnis yang realistis, desain UI/UX yang matang, serta implementasi yang bisa dipelihara dalam jangka panjang.
+
+Setelah tahap analisis disetujui, lanjutkan ke implementasi fondasi aplikasi dan selesaikan setiap tahap secara terukur sebelum berpindah ke tahap berikutnya.
