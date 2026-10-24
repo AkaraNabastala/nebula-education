@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import {
   Role,
   User,
@@ -19,12 +19,9 @@ import {
 } from '../types';
 import {
   INITIAL_USERS,
-  INITIAL_ASSIGNMENTS,
-  INITIAL_STUDENTS,
   INITIAL_TEACHERS,
   INITIAL_CLASSES,
   INITIAL_SUBJECTS,
-  INITIAL_INVOICES,
   INITIAL_JOURNALS,
   INITIAL_ASSESSMENT,
   INITIAL_LEAVES,
@@ -34,6 +31,10 @@ import {
   INITIAL_PROMOTIONS,
   INITIAL_AUDIT_LOGS
 } from '../data/mockData';
+import { studentService } from '../services/studentService';
+import { financeService } from '../services/financeService';
+import { assignmentService } from '../services/assignmentService';
+import { safeGetStorage, safeSetStorage } from '../utils/storage';
 
 interface AppContextType {
   role: Role;
@@ -44,7 +45,7 @@ interface AppContextType {
   themeMode: ThemeMode;
   setThemeMode: (theme: ThemeMode) => void;
   
-  // Data
+  // Data (Managed via dedicated domain services)
   students: Student[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
   teachers: Teacher[];
@@ -62,6 +63,8 @@ interface AppContextType {
   executePromotion: (method: 'fixed' | 'randomized') => void;
   isSidebarExpanded: boolean;
   setIsSidebarExpanded: React.Dispatch<React.SetStateAction<boolean>>;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   assignments: UserAssignment[];
   assignJabatan: (data: Omit<UserAssignment, 'id' | 'assigned_at'>) => void;
   revokeJabatan: (assignmentId: string) => void;
@@ -97,56 +100,46 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [role, setRoleState] = useState<Role>(() => {
-    const saved = localStorage.getItem('edutera_role');
-    return (saved as Role) || 'admin';
+    return safeGetStorage<Role>('edutera_role', 'admin');
   });
 
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('edutera_theme');
-    return (saved as ThemeMode) || 'edutera';
+    return safeGetStorage<ThemeMode>('edutera_theme', 'edutera');
   });
 
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Local state initialized from mock data or local storage
-  const [students, setStudents] = useState<Student[]>(() => {
-    const saved = localStorage.getItem('edutera_students');
-    return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
-  });
+  // Domain service-backed state (Single Source of Truth)
+  const [students, setStudents] = useState<Student[]>(() => studentService.getStudents());
+  const [invoices, setInvoices] = useState<Invoice[]>(() => financeService.getInvoices());
+  const [assignments, setAssignments] = useState<UserAssignment[]>(() => assignmentService.getAssignments());
 
   const [teachers] = useState<Teacher[]>(INITIAL_TEACHERS);
   const [classes] = useState<ClassRoom[]>(INITIAL_CLASSES);
   const [subjects] = useState<Subject[]>(INITIAL_SUBJECTS);
 
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem('edutera_invoices');
-    return saved ? JSON.parse(saved) : INITIAL_INVOICES;
-  });
-
   const [journals, setJournals] = useState<TeachingJournal[]>(() => {
-    const saved = localStorage.getItem('edutera_journals');
-    return saved ? JSON.parse(saved) : INITIAL_JOURNALS;
+    return safeGetStorage<TeachingJournal[]>('edutera_journals', INITIAL_JOURNALS);
   });
 
   const [assessment, setAssessment] = useState<AssessmentSubject>(() => {
-    const saved = localStorage.getItem('edutera_assessment');
-    return saved ? JSON.parse(saved) : INITIAL_ASSESSMENT;
+    return safeGetStorage<AssessmentSubject>('edutera_assessment', INITIAL_ASSESSMENT);
   });
 
   const [leaves, setLeaves] = useState<StudentLeaveRequest[]>(() => {
-    const saved = localStorage.getItem('edutera_leaves');
-    return saved ? JSON.parse(saved) : INITIAL_LEAVES;
+    return safeGetStorage<StudentLeaveRequest[]>('edutera_leaves', INITIAL_LEAVES);
   });
 
   const [schedule] = useState<ScheduleItem[]>(INITIAL_SCHEDULE);
   const [announcements] = useState<Announcement[]>(INITIAL_ANNOUNCEMENTS);
-  const [extracurriculars, setExtracurriculars] = useState(INITIAL_EXTRACURRICULARS);
+  const [extracurriculars] = useState(INITIAL_EXTRACURRICULARS);
   const [promotions, setPromotions] = useState(INITIAL_PROMOTIONS);
-  const [auditLogs, setAuditLogs] = useState(INITIAL_AUDIT_LOGS);
+  const [auditLogs] = useState(INITIAL_AUDIT_LOGS);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(() => {
-    return window.innerWidth >= 1024; // Default expanded on desktop
+    return typeof window !== 'undefined' && window.innerWidth >= 1024;
   });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   const executePromotion = (method: 'fixed' | 'randomized') => {
     if (method === 'randomized') {
@@ -181,214 +174,174 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToast({ message, type });
     setTimeout(() => {
       setToast(null);
-    }, 4000);
+    }, 3500);
   };
 
   const setRole = (newRole: Role) => {
     setRoleState(newRole);
-    localStorage.setItem('edutera_role', newRole);
+    safeSetStorage('edutera_role', newRole);
     showToast(`Beralih peran menjadi: ${INITIAL_USERS[newRole]?.title || newRole}`, 'info');
   };
 
   const setThemeMode = (newTheme: ThemeMode) => {
     setThemeModeState(newTheme);
-    localStorage.setItem('edutera_theme', newTheme);
+    safeSetStorage('edutera_theme', newTheme);
     showToast(`Tema diubah ke: ${newTheme === 'edutera' ? 'Edutera Neo Ice-Blue' : 'Crowz Warm Terracotta'}`, 'info');
   };
 
-  // Sync to localStorage
-  useEffect(() => {
-    localStorage.setItem('edutera_students', JSON.stringify(students));
-  }, [students]);
-
-  useEffect(() => {
-    localStorage.setItem('edutera_invoices', JSON.stringify(invoices));
-  }, [invoices]);
-
-  useEffect(() => {
-    localStorage.setItem('edutera_journals', JSON.stringify(journals));
-  }, [journals]);
-
-  useEffect(() => {
-    localStorage.setItem('edutera_assessment', JSON.stringify(assessment));
-  }, [assessment]);
-
-  useEffect(() => {
-    localStorage.setItem('edutera_leaves', JSON.stringify(leaves));
-  }, [leaves]);
-
-  const [assignments, setAssignments] = useState<UserAssignment[]>(() => {
-    const saved = localStorage.getItem('edutera_assignments');
-    return saved ? JSON.parse(saved) : INITIAL_ASSIGNMENTS;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('edutera_assignments', JSON.stringify(assignments));
-  }, [assignments]);
-
+  // Resolve current active user and their effective permissions
   const baseUser = INITIAL_USERS[role] || INITIAL_USERS.admin;
-  const userActiveAssignments = assignments.filter(
-    a => a.user_id === baseUser.id && a.is_active
+  const userValidAssignments = assignmentService.getUserValidAssignments(baseUser.id);
+  const effectivePermissions = assignmentService.resolveEffectivePermissions(
+    baseUser.user_category,
+    userValidAssignments
   );
 
   const currentUser: User = {
     ...baseUser,
-    assignments: userActiveAssignments
+    assignments: userValidAssignments,
+    effective_permissions: effectivePermissions
   };
 
+  // ==========================================
+  // JABATAN / ASSIGNMENT ACTIONS (Via assignmentService)
+  // ==========================================
   const assignJabatan = (data: Omit<UserAssignment, 'id' | 'assigned_at'>) => {
-    const now = new Date().toISOString().split('T')[0];
-    const newAsg: UserAssignment = {
-      ...data,
-      id: `asg_${Date.now()}`,
-      assigned_at: now
-    };
-    setAssignments(prev => [newAsg, ...prev]);
+    const newAsg = assignmentService.assignJabatan(data);
+    setAssignments(assignmentService.getAssignments());
     showToast(`Jabatan ${newAsg.jabatan_title} berhasil diberikan kepada ${newAsg.user_name}!`, 'success');
   };
 
   const revokeJabatan = (assignmentId: string) => {
-    setAssignments(prev => prev.filter(a => a.id !== assignmentId));
+    assignmentService.revokeJabatan(assignmentId);
+    setAssignments(assignmentService.getAssignments());
     showToast('Penugasan jabatan berhasil dicabut dari akun pengguna.', 'info');
   };
 
   const toggleAssignmentStatus = (assignmentId: string) => {
-    setAssignments(prev =>
-      prev.map(a => (a.id === assignmentId ? { ...a, is_active: !a.is_active } : a))
-    );
+    assignmentService.toggleActive(assignmentId);
+    setAssignments(assignmentService.getAssignments());
     showToast('Status keaktifan penugasan berhasil diperbarui.', 'success');
   };
 
+  // ==========================================
+  // FINANCE ACTIONS (Via financeService)
+  // ==========================================
   const payInvoiceWithMidtrans = (invoiceId: string, method: string) => {
-    const now = new Date();
-    const formattedDate = `${now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}, ${now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
-    
-    setInvoices(prev =>
-      prev.map(inv => {
-        if (inv.id === invoiceId) {
-          return {
-            ...inv,
-            status: 'paid',
-            amount_paid: inv.amount,
-            payment_method: method,
-            paid_at: formattedDate
-          };
-        }
-        return inv;
-      })
-    );
-
-    // Also update student payment status if this was their only bill
-    const paidInv = invoices.find(i => i.id === invoiceId);
-    if (paidInv) {
-      setStudents(prev =>
-        prev.map(std => {
-          if (std.id === paidInv.student_id) {
-            return { ...std, payment_status: 'Lunas' };
-          }
-          return std;
-        })
-      );
+    const updated = financeService.simulateDemoPayment(invoiceId, method);
+    if (updated) {
+      setInvoices(financeService.getInvoices());
+      showToast('Pembayaran Midtrans Berhasil Diselesaikan (Simulasi Demo)!', 'success');
     }
-
-    showToast('Pembayaran Midtrans Berhasil Diselesaikan (Settlement Webhook Terverifikasi)!', 'success');
   };
 
   const payInvoiceCash = (invoiceId: string) => {
-    const now = new Date();
-    const formattedDate = `${now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}, ${now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB`;
-
-    setInvoices(prev =>
-      prev.map(inv => {
-        if (inv.id === invoiceId) {
-          return {
-            ...inv,
-            status: 'paid',
-            amount_paid: inv.amount,
-            payment_method: 'Kasir Tata Usaha (Tunai)',
-            paid_at: formattedDate
-          };
-        }
-        return inv;
-      })
-    );
-    showToast('Pembayaran Tunai berhasil dicatat oleh Petugas Keuangan!', 'success');
+    const updated = financeService.recordCashPayment(invoiceId, currentUser.name);
+    if (updated) {
+      setInvoices(financeService.getInvoices());
+      showToast('Pembayaran Tunai berhasil dicatat oleh Petugas Keuangan!', 'success');
+    }
   };
 
+  const addNewInvoice = (invData: Omit<Invoice, 'id' | 'invoice_no'>) => {
+    const result = financeService.createInvoice(invData);
+    if (result.success && result.invoice) {
+      setInvoices(financeService.getInvoices());
+      showToast(`Tagihan baru berhasil diterbitkan untuk ${result.invoice.student_name}!`, 'success');
+    } else {
+      showToast(result.error || 'Gagal menerbitkan tagihan.', 'error');
+    }
+  };
+
+  // ==========================================
+  // STUDENT ACTIONS (Via studentService)
+  // ==========================================
+  const addNewStudent = (studentData: Omit<Student, 'id'>) => {
+    const newStudent = studentService.addStudent(studentData);
+    setStudents(studentService.getStudents());
+    showToast(`Siswa baru ${newStudent.name} berhasil ditambahkan ke Data Induk!`, 'success');
+  };
+
+  // ==========================================
+  // ACADEMIC & LEAVE ACTIONS
+  // ==========================================
   const addJournal = (journal: Omit<TeachingJournal, 'id'>) => {
     const newJournal: TeachingJournal = {
       ...journal,
       id: `jrn_${Date.now()}`
     };
-    setJournals(prev => [newJournal, ...prev]);
+    const updated = [newJournal, ...journals];
+    setJournals(updated);
+    safeSetStorage('edutera_journals', updated);
     showToast('Jurnal Pembelajaran berhasil disimpan ke sistem!', 'success');
   };
 
   const updateScore = (studentId: string, tugas1: number, tugas2: number, uts: number, uas: number, notes: string) => {
-    const finalScore = Math.round((tugas1 * 0.2) + (tugas2 * 0.2) + (uts * 0.3) + (uas * 0.3));
-    let predicate: 'A' | 'B' | 'C' | 'D' = 'D';
-    if (finalScore >= 88) predicate = 'A';
-    else if (finalScore >= 78) predicate = 'B';
-    else if (finalScore >= 68) predicate = 'C';
+    const updatedScores = assessment.scores.map(sc => {
+      if (sc.student_id === studentId) {
+        const final_score = Math.round((tugas1 * 0.2) + (tugas2 * 0.2) + (uts * 0.3) + (uas * 0.3));
+        let predicate: 'A' | 'B' | 'C' | 'D' = 'D';
+        if (final_score >= 88) predicate = 'A';
+        else if (final_score >= 78) predicate = 'B';
+        else if (final_score >= 68) predicate = 'C';
 
-    setAssessment(prev => ({
-      ...prev,
-      scores: prev.scores.map(s => {
-        if (s.student_id === studentId) {
-          return {
-            ...s,
-            tugas1,
-            tugas2,
-            uts,
-            uas,
-            final_score: finalScore,
-            predicate,
-            notes
-          };
-        }
-        return s;
-      })
-    }));
-    showToast('Nilai siswa berhasil diperbarui & nilai akhir dihitung otomatis!', 'success');
+        return {
+          ...sc,
+          tugas1,
+          tugas2,
+          uts,
+          uas,
+          final_score,
+          predicate,
+          notes
+        };
+      }
+      return sc;
+    });
+
+    const newAssessment = { ...assessment, scores: updatedScores };
+    setAssessment(newAssessment);
+    safeSetStorage('edutera_assessment', newAssessment);
+    showToast('Nilai asesmen siswa berhasil diperbarui!', 'success');
   };
 
   const approveLeave = (leaveId: string, notes: string) => {
     const reviewer = currentUser.name;
     const now = new Date().toLocaleString('id-ID');
-    setLeaves(prev =>
-      prev.map(lev => {
-        if (lev.id === leaveId) {
-          return {
-            ...lev,
-            status: 'Disetujui',
-            reviewed_by: reviewer,
-            reviewed_at: `${now} WIB`,
-            review_notes: notes || 'Permohonan izin disetujui oleh Wali Kelas.'
-          };
-        }
-        return lev;
-      })
-    );
+    const updated = leaves.map(lev => {
+      if (lev.id === leaveId) {
+        return {
+          ...lev,
+          status: 'Disetujui' as const,
+          reviewed_by: reviewer,
+          reviewed_at: `${now} WIB`,
+          review_notes: notes || 'Permohonan izin disetujui oleh Wali Kelas.'
+        };
+      }
+      return lev;
+    });
+    setLeaves(updated);
+    safeSetStorage('edutera_leaves', updated);
     showToast('Pengajuan izin siswa telah DISETUJUI & disinkronkan ke rekap presensi.', 'success');
   };
 
   const rejectLeave = (leaveId: string, notes: string) => {
     const reviewer = currentUser.name;
     const now = new Date().toLocaleString('id-ID');
-    setLeaves(prev =>
-      prev.map(lev => {
-        if (lev.id === leaveId) {
-          return {
-            ...lev,
-            status: 'Ditolak',
-            reviewed_by: reviewer,
-            reviewed_at: `${now} WIB`,
-            review_notes: notes || 'Permohonan izin belum memenuhi kelengkapan dokumen.'
-          };
-        }
-        return lev;
-      })
-    );
+    const updated = leaves.map(lev => {
+      if (lev.id === leaveId) {
+        return {
+          ...lev,
+          status: 'Ditolak' as const,
+          reviewed_by: reviewer,
+          reviewed_at: `${now} WIB`,
+          review_notes: notes || 'Permohonan izin belum memenuhi kelengkapan dokumen.'
+        };
+      }
+      return lev;
+    });
+    setLeaves(updated);
+    safeSetStorage('edutera_leaves', updated);
     showToast('Pengajuan izin telah ditolak dengan catatan alasan.', 'info');
   };
 
@@ -398,27 +351,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `lev_${Date.now()}`,
       status: 'Menunggu Verifikasi'
     };
-    setLeaves(prev => [newLeave, ...prev]);
+    const updated = [newLeave, ...leaves];
+    setLeaves(updated);
+    safeSetStorage('edutera_leaves', updated);
     showToast('Pengajuan izin berhasil dikirim ke Wali Kelas untuk ditinjau.', 'success');
-  };
-
-  const addNewStudent = (studentData: Omit<Student, 'id'>) => {
-    const newStudent: Student = {
-      ...studentData,
-      id: `std_${Date.now()}`
-    };
-    setStudents(prev => [newStudent, ...prev]);
-    showToast(`Siswa baru ${newStudent.name} berhasil ditambahkan ke Data Induk!`, 'success');
-  };
-
-  const addNewInvoice = (invData: Omit<Invoice, 'id' | 'invoice_no'>) => {
-    const newInvoice: Invoice = {
-      ...invData,
-      id: `inv_${Date.now()}`,
-      invoice_no: `INV-2026-${Math.floor(100000000 + Math.random() * 900000000)}`
-    };
-    setInvoices(prev => [newInvoice, ...prev]);
-    showToast(`Tagihan baru berhasil diterbitkan untuk ${newInvoice.student_name}!`, 'success');
   };
 
   return (
@@ -448,6 +384,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         executePromotion,
         isSidebarExpanded,
         setIsSidebarExpanded,
+        isMobileMenuOpen,
+        setIsMobileMenuOpen,
         assignments,
         assignJabatan,
         revokeJabatan,

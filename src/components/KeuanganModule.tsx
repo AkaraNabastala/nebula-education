@@ -17,6 +17,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { InvoiceStatus, Invoice } from '../types';
 import { financeService } from '../services/financeService';
+import { assignmentService } from '../services/assignmentService';
 import { formatDateID, formatCurrencyIDR } from '../utils/formatters';
 
 export const KeuanganModule: React.FC = () => {
@@ -46,11 +47,12 @@ export const KeuanganModule: React.FC = () => {
   const [formDescription, setFormDescription] = useState('Iuran Penyelenggaraan Pendidikan (SPP) Reguler');
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Check if current user has permission to manage finance
-  const hasFinanceAccess =
-    role === 'admin' ||
-    role === 'keuangan' ||
-    Boolean(currentUser?.assignments?.some(a => a.is_active && a.jabatan === 'bendahara'));
+  // Check permission & scope: requires MANAGE_FINANCE permission with institutional scope
+  const hasFinanceAccess = assignmentService.hasPermission(
+    currentUser,
+    'MANAGE_FINANCE',
+    { type: 'institusi' }
+  );
 
   const filteredInvoices = invoices.filter(inv => {
     if (statusFilter !== 'all' && inv.status !== statusFilter) return false;

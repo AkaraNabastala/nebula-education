@@ -17,7 +17,8 @@ import {
   ArrowRightLeft
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { JabatanType, UserCategory, UserAssignment } from '../types';
+import { JabatanType, UserCategory, UserAssignment, PermissionKey } from '../types';
+import { JABATAN_PERMISSIONS } from '../services/assignmentService';
 
 export const ManajemenPenugasanModule: React.FC = () => {
   const {
@@ -90,20 +91,7 @@ export const ManajemenPenugasanModule: React.FC = () => {
       scopeName = 'Sesi Jam Pelajaran Terjadwal';
     }
 
-    let permissions: string[] = [];
-    if (formJabatan === 'wali_kelas') {
-      permissions = ['leave_requests.review', 'students.read', 'attendance.read', 'grades.read_class', 'report_cards.finalize'];
-    } else if (formJabatan === 'admin_kurikulum') {
-      permissions = ['schedule.manage', 'curriculum.manage', 'journals.audit', 'grades.manage', 'promotions.manage'];
-    } else if (formJabatan === 'bendahara') {
-      permissions = ['finance.invoices.manage', 'finance.payments.record', 'finance.midtrans.monitor', 'finance.reports.read'];
-    } else if (formJabatan === 'pembina_ekskul') {
-      permissions = ['extracurricular.attendance.manage', 'extracurricular.members.manage'];
-    } else if (formJabatan === 'guru_piket') {
-      permissions = ['attendance.manage', 'substitute_teacher.assign'];
-    } else {
-      permissions = ['students.conduct.manage', 'student_activities.manage'];
-    }
+    const permissions: PermissionKey[] = JABATAN_PERMISSIONS[formJabatan] || ['VIEW_ALL_STUDENTS'];
 
     assignJabatan({
       user_id: tch.id,

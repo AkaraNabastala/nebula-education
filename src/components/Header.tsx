@@ -32,12 +32,13 @@ export const Header: React.FC = () => {
     invoices,
     assignments,
     isSidebarExpanded,
-    setIsSidebarExpanded
+    setIsSidebarExpanded,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen
   } = useApp();
 
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isCrowz = themeMode === 'crowz';
 
@@ -129,9 +130,14 @@ export const Header: React.FC = () => {
           {/* Mobile hamburger menu */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+            className="md:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer relative"
+            title="Buka Menu Navigasi"
+            aria-label="Buka Menu Navigasi"
           >
-            {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isMobileMenuOpen ? <X className="w-5 h-5 text-slate-900" /> : <Menu className="w-5 h-5" />}
+            {(pendingLeaves.length > 0 || unpaidInvoices.length > 0) && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-white" />
+            )}
           </button>
 
           <button
@@ -349,31 +355,6 @@ export const Header: React.FC = () => {
           </div>
         </div>
       </header>
-
-      {/* Mobile Drawer Menu if opened */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-x-0 top-16 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 p-4 shadow-2xl md:hidden space-y-3 animate-in slide-in-from-top-3">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Navigasi Seluruh Modul</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            {Object.entries(tabTitleMap).map(([id, label]) => (
-              <button
-                key={id}
-                onClick={() => {
-                  setActiveTab(id);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`p-2.5 rounded-xl font-bold text-left truncate transition-colors ${
-                  activeTab === id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </>
   );
 };

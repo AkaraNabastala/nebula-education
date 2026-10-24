@@ -10,6 +10,23 @@ export type JabatanType =
   | 'guru_piket'
   | 'admin_kesiswaan';
 
+export type PermissionKey =
+  | 'MANAGE_USERS'
+  | 'MANAGE_ASSIGNMENTS'
+  | 'VIEW_ALL_STUDENTS'
+  | 'MANAGE_STUDENTS'
+  | 'RECORD_ATTENDANCE'
+  | 'MANAGE_CURRICULUM'
+  | 'INPUT_GRADES'
+  | 'VERIFY_LEAVES'
+  | 'MANAGE_FINANCE'
+  | 'VIEW_FINANCE'
+  | 'VIEW_OWN_ACADEMIC'
+  | 'PAY_TUITION'
+  | 'SUPERVISE_EKSKUL'
+  | 'MANAGE_SCHEDULE'
+  | 'VIEW_AUDIT_LOGS';
+
 export interface UserAssignment {
   id: string;
   user_id: string;
@@ -24,7 +41,7 @@ export interface UserAssignment {
   is_active: boolean;
   assigned_by: string;
   assigned_at: string;
-  permissions: string[];
+  permissions: PermissionKey[];
 }
 
 export type ThemeMode = 'edutera' | 'crowz';
@@ -42,7 +59,7 @@ export interface User {
   phone?: string;
   title?: string;
   assignments?: UserAssignment[];
-  effective_permissions?: string[];
+  effective_permissions?: PermissionKey[];
 }
 
 export interface Student {

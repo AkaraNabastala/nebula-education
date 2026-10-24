@@ -57,7 +57,7 @@ const MainLayout: React.FC = () => {
 
       {/* 3. MAIN CONTENT AREA (Scrolls smoothly under fixed header and alongside fixed sidebar) */}
       <main
-        className={`transition-all duration-300 pt-20 px-3 sm:px-6 lg:px-8 pb-24 md:pb-10 min-h-screen ${
+        className={`transition-all duration-300 pt-20 px-3 sm:px-6 lg:px-8 pb-10 min-h-screen ${
           isSidebarExpanded ? 'md:ml-64 lg:ml-68' : 'md:ml-20'
         }`}
       >

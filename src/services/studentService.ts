@@ -1,20 +1,21 @@
 import { Student } from '../types';
 import { INITIAL_STUDENTS } from '../data/mockData';
+import { safeGetStorage, safeSetStorage } from '../utils/storage';
 
 /**
  * Student Service - Encapsulates student data access & operations
+ * Single Source of Truth for Student domain
  * In production, these methods call NestJS REST endpoints (e.g. GET/POST /api/v1/students)
  */
 class StudentService {
   private storageKey = 'edutera_students';
 
   getStudents(): Student[] {
-    const saved = localStorage.getItem(this.storageKey);
-    return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+    return safeGetStorage<Student[]>(this.storageKey, INITIAL_STUDENTS);
   }
 
   saveStudents(students: Student[]): void {
-    localStorage.setItem(this.storageKey, JSON.stringify(students));
+    safeSetStorage(this.storageKey, students);
   }
 
   addStudent(studentData: Omit<Student, 'id'>): Student {

@@ -28,7 +28,7 @@ export const INITIAL_ASSIGNMENTS: UserAssignment[] = [
     is_active: true,
     assigned_by: 'Bambang Kusuma, M.M. (Admin)',
     assigned_at: '2026-07-10',
-    permissions: ['leave_requests.review', 'students.read', 'attendance.read', 'grades.read_class', 'report_cards.finalize']
+    permissions: ['VERIFY_LEAVES', 'VIEW_ALL_STUDENTS', 'RECORD_ATTENDANCE', 'INPUT_GRADES']
   },
   {
     id: 'asg_02',
@@ -43,7 +43,7 @@ export const INITIAL_ASSIGNMENTS: UserAssignment[] = [
     is_active: true,
     assigned_by: 'Bambang Kusuma, M.M. (Admin)',
     assigned_at: '2026-07-01',
-    permissions: ['schedule.manage', 'curriculum.manage', 'journals.audit', 'grades.manage', 'promotions.manage']
+    permissions: ['MANAGE_CURRICULUM', 'MANAGE_SCHEDULE', 'INPUT_GRADES', 'VIEW_ALL_STUDENTS']
   },
   {
     id: 'asg_03',
@@ -58,7 +58,7 @@ export const INITIAL_ASSIGNMENTS: UserAssignment[] = [
     is_active: true,
     assigned_by: 'Bambang Kusuma, M.M. (Admin)',
     assigned_at: '2026-01-02',
-    permissions: ['finance.invoices.manage', 'finance.payments.record', 'finance.midtrans.monitor', 'finance.reports.read']
+    permissions: ['MANAGE_FINANCE', 'VIEW_FINANCE', 'VIEW_ALL_STUDENTS']
   },
   {
     id: 'asg_04',
@@ -74,7 +74,7 @@ export const INITIAL_ASSIGNMENTS: UserAssignment[] = [
     is_active: true,
     assigned_by: 'Bambang Kusuma, M.M. (Admin)',
     assigned_at: '2026-08-01',
-    permissions: ['extracurricular.attendance.manage', 'extracurricular.members.manage']
+    permissions: ['SUPERVISE_EKSKUL', 'VIEW_ALL_STUDENTS']
   },
   {
     id: 'asg_05',
@@ -89,7 +89,7 @@ export const INITIAL_ASSIGNMENTS: UserAssignment[] = [
     is_active: true,
     assigned_by: 'Dr. Agus Santoso, M.Pd. (Kurikulum)',
     assigned_at: '2026-07-15',
-    permissions: ['attendance.manage', 'substitute_teacher.assign']
+    permissions: ['RECORD_ATTENDANCE', 'VIEW_ALL_STUDENTS']
   }
 ];
 
@@ -103,7 +103,23 @@ export const INITIAL_USERS: Record<string, User> = {
     email: 'admin@edutera.sch.id',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
     title: 'Admin Aplikasi & Kepala Tata Usaha',
-    effective_permissions: ['*']
+    effective_permissions: [
+      'MANAGE_USERS',
+      'MANAGE_ASSIGNMENTS',
+      'VIEW_ALL_STUDENTS',
+      'MANAGE_STUDENTS',
+      'RECORD_ATTENDANCE',
+      'MANAGE_CURRICULUM',
+      'INPUT_GRADES',
+      'VERIFY_LEAVES',
+      'MANAGE_FINANCE',
+      'VIEW_FINANCE',
+      'VIEW_OWN_ACADEMIC',
+      'PAY_TUITION',
+      'SUPERVISE_EKSKUL',
+      'MANAGE_SCHEDULE',
+      'VIEW_AUDIT_LOGS'
+    ]
   },
   guru: {
     id: 'usr_guru',
@@ -114,7 +130,7 @@ export const INITIAL_USERS: Record<string, User> = {
     email: 'ratna.sari@edutera.sch.id',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
     title: 'Guru Matematika (Tugas Tambahan: Guru Piket)',
-    effective_permissions: ['attendance.manage', 'journals.manage', 'grades.enter']
+    effective_permissions: ['RECORD_ATTENDANCE', 'INPUT_GRADES', 'VIEW_ALL_STUDENTS', 'MANAGE_SCHEDULE']
   },
   wali_kelas: {
     id: 'usr_wali',
@@ -127,7 +143,7 @@ export const INITIAL_USERS: Record<string, User> = {
     class_id: 'cls_xi_mipa1',
     class_name: 'XI MIPA 1',
     title: 'Guru Fisika (Jabatan: Wali Kelas XI MIPA 1)',
-    effective_permissions: ['leave_requests.review', 'students.read', 'attendance.read', 'grades.read_class', 'report_cards.finalize']
+    effective_permissions: ['VERIFY_LEAVES', 'VIEW_ALL_STUDENTS', 'RECORD_ATTENDANCE', 'INPUT_GRADES', 'MANAGE_SCHEDULE']
   },
   keuangan: {
     id: 'usr_keuangan',
@@ -138,7 +154,7 @@ export const INITIAL_USERS: Record<string, User> = {
     email: 'keuangan@edutera.sch.id',
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
     title: 'Staf Tenaga Kependidikan (Jabatan: Bendahara Sekolah)',
-    effective_permissions: ['finance.invoices.manage', 'finance.payments.record', 'finance.midtrans.monitor', 'finance.reports.read']
+    effective_permissions: ['MANAGE_FINANCE', 'VIEW_FINANCE', 'VIEW_ALL_STUDENTS']
   },
   siswa: {
     id: 'usr_siswa',
@@ -151,7 +167,7 @@ export const INITIAL_USERS: Record<string, User> = {
     class_id: 'cls_xi_mipa1',
     class_name: 'XI MIPA 1',
     title: 'Peserta Didik Fase F (XI MIPA 1)',
-    effective_permissions: ['student.profile.read', 'student.grades.read', 'student.invoices.pay', 'student.leave_request.submit']
+    effective_permissions: ['VIEW_OWN_ACADEMIC', 'PAY_TUITION']
   },
   kurikulum: {
     id: 'usr_kurikulum',
@@ -162,7 +178,7 @@ export const INITIAL_USERS: Record<string, User> = {
     email: 'kurikulum@edutera.sch.id',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
     title: 'Guru Senior (Jabatan: Admin Kurikulum)',
-    effective_permissions: ['schedule.manage', 'curriculum.manage', 'journals.audit', 'grades.manage', 'promotions.manage']
+    effective_permissions: ['MANAGE_CURRICULUM', 'MANAGE_SCHEDULE', 'INPUT_GRADES', 'VIEW_ALL_STUDENTS', 'RECORD_ATTENDANCE']
   }
 };
 

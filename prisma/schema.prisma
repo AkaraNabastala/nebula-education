@@ -12,7 +12,7 @@ datasource db {
 }
 
 // ==========================================
-// 1. IDENTITAS AKUN & SISTEM HAK AKSES
+// 1. IDENTITAS AKUN & SISTEM HAK AKSES (RBAC)
 // ==========================================
 
 enum UserCategory {
@@ -38,6 +38,13 @@ enum AccountStatus {
   SUSPENDED
 }
 
+enum ScopeType {
+  INSTITUSI
+  KELAS
+  EKSKUL
+  SESI
+}
+
 model User {
   id              String         @id @default(uuid())
   email           String         @unique
@@ -52,15 +59,44 @@ model User {
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
   school          School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  assignments     UserAssignment[]
+  assignments     UserAssignment[] @relation("UserAssignments")
+  assignmentsGiven UserAssignment[] @relation("AssignedBy")
   teacherProfile  Teacher?
   studentProfile  Student?
   auditLogs       AuditLog[]
   recordedAttendances AttendanceRecord[] @relation("RecordedBy")
+  reviewedLeaves   StudentLeaveRequest[] @relation("ReviewedLeaves")
+  recordedPayments Payment[]             @relation("RecordedPayments")
+  piketAssignments SubstituteTeacherLog[] @relation("PiketAssignments")
+  promotionsDecided ClassPromotionHistory[] @relation("PromotionsDecided")
 
   @@index([schoolId])
   @@index([userCategory])
   @@map("users")
+}
+
+// Definisi Permission Granular
+model Permission {
+  id          String                 @id @default(uuid())
+  name        String                 @unique // e.g. "MANAGE_FINANCE", "RECORD_ATTENDANCE", "VERIFY_LEAVES"
+  category    String                 // e.g. "Keuangan", "Akademik", "Administrasi", "Kesiswaan"
+  description String?
+  assignments AssignmentPermission[]
+
+  @@map("permissions")
+}
+
+// Relasi Many-to-Many antara Penugasan Jabatan dan Permission Eksplisit
+model AssignmentPermission {
+  id           String         @id @default(uuid())
+  assignmentId String         @map("assignment_id")
+  permissionId String         @map("permission_id")
+
+  assignment   UserAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  permission   Permission     @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, permissionId])
+  @@map("assignment_permissions")
 }
 
 // Penugasan & Jabatan Dinamis Berlingkup (Scoped Assignment)
@@ -68,6 +104,7 @@ model UserAssignment {
   id                String       @id @default(uuid())
   userId            String       @map("user_id")
   jabatan           JabatanType
+  scopeType         ScopeType    @default(INSTITUSI) @map("scope_type")
   classroomId       String?      @map("classroom_id")
   academicYearId    String       @map("academic_year_id")
   extraCurricularId String?      @map("extracurricular_id")
@@ -77,9 +114,12 @@ model UserAssignment {
   assignedByUserId  String?      @map("assigned_by_user_id")
   createdAt         DateTime     @default(now()) @map("created_at")
 
-  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User         @relation("UserAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  assignedBy        User?        @relation("AssignedBy", fields: [assignedByUserId], references: [id])
   classroom         Classroom?   @relation(fields: [classroomId], references: [id])
   academicYear      AcademicYear @relation(fields: [academicYearId], references: [id])
+  extraCurricular   Extracurricular? @relation(fields: [extraCurricularId], references: [id])
+  permissions       AssignmentPermission[]
 
   @@index([userId, isActive])
   @@index([jabatan, academicYearId])
@@ -91,21 +131,22 @@ model UserAssignment {
 // ==========================================
 
 model School {
-  id          String       @id @default(uuid())
-  npsn        String       @unique
-  name        String
-  educationLevel String    @map("education_level") // SMP, MTs, SMA, MA, SMK
-  address     String?
-  city        String?
-  province    String?
-  phone       String?
-  email       String?
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  id              String       @id @default(uuid())
+  npsn            String       @unique
+  name            String
+  educationLevel  String       @map("education_level") // SMP, MTs, SMA, MA, SMK
+  address         String?
+  city            String?
+  province        String?
+  phone           String?
+  email           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
 
-  users         User[]
-  classrooms    Classroom[]
-  academicYears AcademicYear[]
+  users           User[]
+  classrooms      Classroom[]
+  academicYears   AcademicYear[]
+  extracurriculars Extracurricular[]
 
   @@map("schools")
 }
@@ -123,6 +164,7 @@ model AcademicYear {
   school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   assignments UserAssignment[]
   classrooms  Classroom[]
+  scheduleItems ScheduleItem[]
 
   @@index([schoolId, isCurrent])
   @@map("academic_years")
@@ -135,6 +177,7 @@ model Classroom {
   name           String       // Contoh: "X-A", "XII RPL 1"
   grade          Int          // 7, 8, 9, 10, 11, 12
   major          String?      // IPA, IPS, RPL, TKJ
+  room           String?
   createdAt      DateTime     @default(now()) @map("created_at")
 
   school         School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -143,9 +186,28 @@ model Classroom {
   assignments    UserAssignment[]
   journals       TeachingJournal[]
   attendances    AttendanceRecord[]
+  scheduleItems  ScheduleItem[]
+  substituteLogs SubstituteTeacherLog[]
+  promotionsFrom ClassPromotionHistory[] @relation("PromotionFromClass")
 
   @@index([schoolId, academicYearId])
   @@map("classrooms")
+}
+
+model Extracurricular {
+  id          String       @id @default(uuid())
+  schoolId    String       @map("school_id")
+  name        String       // Robotik, PMR, Paskibra, Futsal
+  category    String       // Olahraga, Seni & Budaya, Sains & Teknologi, Kepemimpinan
+  coachName   String?      @map("coach_name")
+  schedule    String?
+  room        String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments UserAssignment[]
+
+  @@map("extracurriculars")
 }
 
 // ==========================================
@@ -157,12 +219,14 @@ model Teacher {
   userId          String       @unique @map("user_id")
   nip             String?      @unique
   nuptk           String?      @unique
-  specialization  String?      // Contoh: "Matematika", "Bahasa Inggris"
+  specialization  String?      // Contoh: "Matematika", "Fisika"
   joinDate        DateTime?    @map("join_date")
 
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   journals        TeachingJournal[]
   assessments     Assessment[]
+  originalSubstituteLogs SubstituteTeacherLog[] @relation("OriginalTeacher")
+  assignedSubstituteLogs SubstituteTeacherLog[] @relation("SubstituteTeacher")
 
   @@map("teachers")
 }
@@ -188,14 +252,33 @@ model Student {
   leaveRequests   StudentLeaveRequest[]
   invoices        Invoice[]
   scores          StudentScore[]
+  promotionHistories ClassPromotionHistory[]
 
   @@index([classroomId])
   @@map("students")
 }
 
 // ==========================================
-// 4. PRESENSI & JURNAL KELAS
+// 4. JADWAL, PRESENSI & JURNAL KELAS
 // ==========================================
+
+model ScheduleItem {
+  id             String       @id @default(uuid())
+  classroomId    String       @map("classroom_id")
+  academicYearId String       @map("academic_year_id")
+  day            String       // Senin, Selasa, Rabu, Kamis, Jumat, Sabtu
+  timeSlot       String       @map("time_slot") // "07:30 - 09:00"
+  subjectName    String       @map("subject_name")
+  teacherName    String       @map("teacher_name")
+  room           String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  classroom      Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@index([classroomId, day])
+  @@map("schedule_items")
+}
 
 enum AttendanceStatus {
   HADIR
@@ -241,6 +324,31 @@ model TeachingJournal {
   @@map("teaching_journals")
 }
 
+model SubstituteTeacherLog {
+  id                   String       @id @default(uuid())
+  date                 DateTime     @db.Date
+  timeSlot             String       @map("time_slot")
+  classroomId          String       @map("classroom_id")
+  originalTeacherId    String       @map("original_teacher_id")
+  substituteTeacherId  String       @map("substitute_teacher_id")
+  assignedByUserId     String       @map("assigned_by_user_id")
+  reason               String?
+  createdAt            DateTime     @default(now()) @map("created_at")
+
+  classroom            Classroom    @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  originalTeacher      Teacher      @relation("OriginalTeacher", fields: [originalTeacherId], references: [id])
+  substituteTeacher    Teacher      @relation("SubstituteTeacher", fields: [substituteTeacherId], references: [id])
+  assignedBy           User         @relation("PiketAssignments", fields: [assignedByUserId], references: [id])
+
+  @@map("substitute_teacher_logs")
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model StudentLeaveRequest {
   id              String       @id @default(uuid())
   studentId       String       @map("student_id")
@@ -249,30 +357,40 @@ model StudentLeaveRequest {
   endDate         DateTime     @map("end_date")
   reason          String
   attachmentUrl   String?      @map("attachment_url")
-  status          String       @default("PENDING") // PENDING, APPROVED, REJECTED
+  status          LeaveStatus  @default(PENDING)
   reviewedByUserId String?     @map("reviewed_by_user_id")
+  reviewedAt      DateTime?    @map("reviewed_at")
+  reviewNotes     String?      @map("review_notes")
   createdAt       DateTime     @default(now()) @map("created_at")
 
   student         Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  reviewedBy      User?        @relation("ReviewedLeaves", fields: [reviewedByUserId], references: [id])
 
   @@index([studentId, status])
   @@map("student_leave_requests")
 }
 
 // ==========================================
-// 5. PENILAIAN & AKADEMIK
+// 5. PENILAIAN & KENAIKAN KELAS
 // ==========================================
 
-model Assessment {
-  id              String       @id @default(uuid())
-  teacherId       String       @map("teacher_id")
-  title           String       // Contoh: "Ulangan Harian 1 Matriks"
-  assessmentType  String       @map("assessment_type") // TUGAS, UTS, UAS, PRAKTIKUM
-  maxScore        Float        @default(100) @map("max_score")
-  weight          Float        @default(1.0)
-  createdAt       DateTime     @default(now()) @map("created_at")
+enum AssessmentType {
+  TUGAS
+  UTS
+  UAS
+  PRAKTIKUM
+}
 
-  teacher         Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+model Assessment {
+  id              String         @id @default(uuid())
+  teacherId       String         @map("teacher_id")
+  title           String         // Contoh: "Ulangan Harian 1 Matriks"
+  assessmentType  AssessmentType @map("assessment_type")
+  maxScore        Float          @default(100) @map("max_score")
+  weight          Float          @default(1.0)
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  teacher         Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   scores          StudentScore[]
 
   @@map("assessments")
@@ -291,6 +409,32 @@ model StudentScore {
 
   @@unique([assessmentId, studentId])
   @@map("student_scores")
+}
+
+enum PromotionStatus {
+  NAIK_KELAS
+  TINGGAL_KELAS
+  LULUS
+}
+
+model ClassPromotionHistory {
+  id                 String          @id @default(uuid())
+  studentId          String          @map("student_id")
+  fromAcademicYearId String          @map("from_academic_year_id")
+  toAcademicYearId   String          @map("to_academic_year_id")
+  fromClassroomId    String          @map("from_classroom_id")
+  toClassroomId      String?         @map("to_classroom_id")
+  status             PromotionStatus @default(NAIK_KELAS)
+  notes              String?
+  decidedByUserId    String          @map("decided_by_user_id")
+  createdAt          DateTime        @default(now()) @map("created_at")
+
+  student            Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  fromClassroom      Classroom       @relation("PromotionFromClass", fields: [fromClassroomId], references: [id])
+  decidedBy          User            @relation("PromotionsDecided", fields: [decidedByUserId], references: [id])
+
+  @@index([studentId])
+  @@map("class_promotion_histories")
 }
 
 // ==========================================
@@ -347,6 +491,7 @@ model Payment {
   createdAt       DateTime       @default(now()) @map("created_at")
 
   invoice         Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  recordedBy      User?          @relation("RecordedPayments", fields: [recordedByUserId], references: [id])
 
   @@index([invoiceId])
   @@index([midtransOrderId])

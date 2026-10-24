@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Home,
   Layers,
@@ -16,7 +16,10 @@ import {
   Compass,
   ArrowRightLeft,
   KeyRound,
-  UserCheck
+  UserCheck,
+  X,
+  Search,
+  Palette
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Role } from '../types';
@@ -43,10 +46,15 @@ export const Sidebar: React.FC = () => {
     leaves,
     invoices,
     themeMode,
+    setThemeMode,
     isSidebarExpanded,
     setIsSidebarExpanded,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
     currentUser
   } = useApp();
+
+  const [mobileMenuSearch, setMobileMenuSearch] = useState('');
 
   const isCrowz = themeMode === 'crowz';
 
@@ -168,9 +176,16 @@ export const Sidebar: React.FC = () => {
     }
   ];
 
+  const handleSelectTab = (tabId: string) => {
+    setActiveTab(tabId);
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <>
-      {/* Desktop FIXED Sidebar */}
+      {/* ======================================================== */}
+      {/* 1. DESKTOP FIXED SIDEBAR                                 */}
+      {/* ======================================================== */}
       <aside
         className={`hidden md:flex flex-col justify-between fixed top-16 left-0 bottom-0 z-30 transition-all duration-300 select-none shadow-xl border-r ${
           isSidebarExpanded ? 'w-64 lg:w-68 px-3.5 py-4' : 'w-20 px-2.5 py-4 items-center'
@@ -203,7 +218,7 @@ export const Sidebar: React.FC = () => {
               {/* Sidebar toggle button */}
               <button
                 onClick={() => setIsSidebarExpanded(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                 title="Ciutkan Sidebar"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -212,7 +227,7 @@ export const Sidebar: React.FC = () => {
           ) : (
             <button
               onClick={() => setIsSidebarExpanded(true)}
-              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors mx-auto mb-2"
+              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-colors mx-auto mb-2 cursor-pointer"
               title="Lebarkan Sidebar"
             >
               <ChevronRight className="w-4 h-4" />
@@ -256,7 +271,7 @@ export const Sidebar: React.FC = () => {
                         key={item.id}
                         onClick={() => setActiveTab(item.id)}
                         title={!isSidebarExpanded ? item.label : undefined}
-                        className={`w-full flex items-center rounded-2xl transition-all duration-150 group relative ${
+                        className={`w-full flex items-center rounded-2xl transition-all duration-150 group relative cursor-pointer ${
                           isSidebarExpanded
                             ? 'px-3 py-2.5 gap-3 text-left'
                             : 'w-11 h-11 justify-center mx-auto'
@@ -318,47 +333,178 @@ export const Sidebar: React.FC = () => {
         </div>
       </aside>
 
-      {/* Mobile Fixed Bottom Nav */}
-      <nav
-        className={`md:hidden fixed bottom-0 left-0 right-0 py-2 px-3 flex items-center justify-around z-40 backdrop-blur-xl border-t shadow-2xl ${
-          isCrowz
-            ? 'bg-[#d97453]/95 text-white border-orange-300/30'
-            : 'bg-[#0b1021]/95 text-white border-white/10'
-        }`}
-      >
-        {[
-          { id: 'overview', icon: Home, label: 'Beranda' },
-          { id: 'presensi', icon: CheckCircle2, label: 'Presensi' },
-          { id: 'jurnal', icon: BookOpen, label: 'Jurnal' },
-          { id: 'penilaian', icon: FileText, label: 'Nilai' },
-          { id: 'keuangan', icon: CreditCard, label: 'SPP', badge: overdueInvoicesCount },
-          { id: 'perizinan', icon: MessageSquare, label: 'Izin', badge: pendingLeavesCount }
-        ].map(item => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`relative flex flex-col items-center justify-center p-2 rounded-xl transition-all ${
-                isActive
-                  ? isCrowz
-                    ? 'bg-white text-[#d97453] font-bold'
-                    : 'bg-blue-600 text-white font-bold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {item.badge && item.badge > 0 ? (
-                <span className="absolute -top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                  {item.badge}
-                </span>
-              ) : null}
-              <span className="text-[10px] mt-0.5">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* ======================================================== */}
+      {/* 2. MOBILE DRAWER NAVIGATION (BUKA - TUTUP OFF-CANVAS)   */}
+      {/* ======================================================== */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop Blur Overlay */}
+          <div
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
+            aria-hidden="true"
+          />
+
+          {/* Drawer Menu Panel */}
+          <div
+            className={`relative w-80 max-w-[85vw] h-full flex flex-col shadow-2xl z-10 transition-transform animate-in slide-in-from-left duration-200 ${
+              isCrowz
+                ? 'bg-[#d97453] text-white border-r border-orange-400/20'
+                : 'bg-[#0b1021] text-white border-r border-white/10'
+            }`}
+          >
+            {/* Drawer Top Header with Close Button */}
+            <div className="p-4 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md">
+                  <Zap className="w-4 h-4 fill-current" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-extrabold tracking-tight font-['Outfit'] leading-none">
+                    Edutera SIM
+                  </h2>
+                  <p className="text-[10px] text-slate-400 mt-0.5">SMA N 1 Nusantara</p>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                title="Tutup Menu"
+                aria-label="Tutup Menu Navigasi"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            {/* User Profile Card */}
+            <div className="p-3 mx-3 mt-3 rounded-2xl bg-white/5 border border-white/10">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500/40"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-white truncate leading-tight">
+                    {currentUser.name}
+                  </p>
+                  <p className="text-[10px] text-blue-300 font-semibold truncate capitalize mt-0.5">
+                    {currentUser.user_category?.replace('_', ' ')}
+                  </p>
+                </div>
+              </div>
+              {currentUser.assignments && currentUser.assignments.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-1.5 text-[10px] text-blue-200">
+                  <UserCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                  <span className="truncate font-medium">
+                    Tugas: {currentUser.assignments[0]?.jabatan_title}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Menu Search / Filter */}
+            <div className="px-3 mt-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={mobileMenuSearch}
+                  onChange={e => setMobileMenuSearch(e.target.value)}
+                  placeholder="Cari modul atau menu..."
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white/10 border border-white/10 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                />
+                {mobileMenuSearch && (
+                  <button
+                    onClick={() => setMobileMenuSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Scrollable Categorized Menu List */}
+            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+              {menuSections.map((section, idx) => {
+                // Filter items by role AND search query
+                const availableItems = section.items
+                  .filter(item => item.roles.includes(role))
+                  .filter(item =>
+                    mobileMenuSearch.trim() === ''
+                      ? true
+                      : item.label.toLowerCase().includes(mobileMenuSearch.toLowerCase())
+                  );
+
+                if (availableItems.length === 0) return null;
+
+                return (
+                  <div key={idx} className="space-y-1">
+                    <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400/80 px-2 py-0.5">
+                      {section.title}
+                    </p>
+
+                    <div className="space-y-1">
+                      {availableItems.map(item => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => handleSelectTab(item.id)}
+                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                              isActive
+                                ? isCrowz
+                                  ? 'bg-white text-[#d97453] shadow-md font-bold'
+                                  : 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-bold'
+                                : 'text-slate-200 hover:text-white hover:bg-white/10'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Icon className="w-4.5 h-4.5 shrink-0" />
+                              <span className="text-xs truncate">{item.label}</span>
+                            </div>
+
+                            {item.badge !== undefined && (
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold text-white shrink-0 ${
+                                  item.badgeColor || 'bg-rose-500'
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Drawer Bottom Controls */}
+            <div className="p-3 border-t border-white/10 bg-black/20 flex items-center justify-between text-xs">
+              <button
+                onClick={() => setThemeMode(themeMode === 'edutera' ? 'crowz' : 'edutera')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors cursor-pointer text-[11px]"
+              >
+                <Palette className="w-3.5 h-3.5 text-blue-400" />
+                <span>Ubah Tema</span>
+              </button>
+
+              <div className="text-[10px] text-slate-400 text-right">
+                <p className="font-semibold text-slate-300">T.A. 2026/2027</p>
+                <p>Semester Ganjil</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
